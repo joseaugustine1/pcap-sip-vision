@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Upload, FileCheck, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { mapError, logError } from '@/lib/errorHandler';
 
 export const UploadSection = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -83,10 +84,13 @@ export const UploadSection = () => {
       if (fileInput) fileInput.value = "";
 
     } catch (error: any) {
-      console.error("Upload error:", error);
+      const { data: { user } } = await supabase.auth.getUser();
+      logError('pcap-upload', error, user?.id);
+      
+      const { message } = mapError(error);
       toast({
         title: "Upload Failed",
-        description: error.message || "Failed to upload files",
+        description: message,
         variant: "destructive",
       });
     } finally {

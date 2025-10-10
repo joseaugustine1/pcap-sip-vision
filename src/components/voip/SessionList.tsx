@@ -7,6 +7,18 @@ import { Clock, Activity, CheckCircle, AlertCircle, Loader2, Trash2 } from "luci
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { mapError, logError } from '@/lib/errorHandler';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Session {
   id: string;
@@ -118,11 +130,14 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
       });
 
       loadSessions();
-    } catch (error) {
-      console.error('Error deleting session:', error);
+    } catch (error: any) {
+      const { data: { user } } = await supabase.auth.getUser();
+      logError('delete-session', error, user?.id);
+      
+      const { message } = mapError(error);
       toast({
-        title: "Error",
-        description: "Failed to delete session. Please try again.",
+        title: "Delete Failed",
+        description: message,
         variant: "destructive",
       });
     }

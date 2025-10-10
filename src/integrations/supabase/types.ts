@@ -24,7 +24,7 @@ export type Database = {
           name: string
           status: string
           total_calls: number | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           avg_jitter?: number | null
@@ -35,7 +35,7 @@ export type Database = {
           name: string
           status?: string
           total_calls?: number | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           avg_jitter?: number | null
@@ -46,7 +46,7 @@ export type Database = {
           name?: string
           status?: string
           total_calls?: number | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }

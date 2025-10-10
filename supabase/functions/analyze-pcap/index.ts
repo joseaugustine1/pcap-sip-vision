@@ -12,11 +12,50 @@ serve(async (req) => {
   }
 
   try {
+    const { sessionId } = await req.json();
+
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Create client with user context
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Verify session belongs to user
+    const { data: session, error: sessionError } = await supabaseClient
+      .from("analysis_sessions")
+      .select("user_id")
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (sessionError || !session || session.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Forbidden - Session not found or access denied" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Use service role for database writes
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const { sessionId } = await req.json();
 
     console.log(`Starting PCAP analysis for session ${sessionId}`);
 
@@ -227,10 +266,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error in analyze-pcap function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error('[ANALYZE-PCAP]', {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Failed to analyze PCAP files. Please try again later.' }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

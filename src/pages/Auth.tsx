@@ -8,6 +8,42 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Activity, Loader2, Terminal } from "lucide-react";
+import { z } from 'zod';
+import { mapError, logError } from '@/lib/errorHandler';
+
+const signUpSchema = z.object({
+  email: z.string()
+    .trim()
+    .toLowerCase()
+    .email({ message: 'Please enter a valid email address' })
+    .max(255, { message: 'Email must be less than 255 characters' }),
+  password: z.string()
+    .min(8, { message: 'Password must be at least 8 characters' })
+    .max(100, { message: 'Password must be less than 100 characters' })
+    .regex(/[A-Z]/, { message: 'Password must contain at least one uppercase letter' })
+    .regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter' })
+    .regex(/[0-9]/, { message: 'Password must contain at least one number' })
+    .regex(/[^A-Za-z0-9]/, { message: 'Password must contain at least one special character' }),
+  displayName: z.string()
+    .trim()
+    .min(2, { message: 'Display name must be at least 2 characters' })
+    .max(50, { message: 'Display name must be less than 50 characters' })
+    .regex(
+      /^[a-zA-Z0-9\s_-]+$/,
+      { message: 'Display name can only contain letters, numbers, spaces, hyphens and underscores' }
+    )
+    .optional()
+    .or(z.literal(''))
+});
+
+const signInSchema = z.object({
+  email: z.string()
+    .trim()
+    .toLowerCase()
+    .email({ message: 'Please enter a valid email address' }),
+  password: z.string()
+    .min(1, { message: 'Password is required' })
+});
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -39,13 +75,19 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
+      const validated = signUpSchema.parse({
+        email: email.trim().toLowerCase(),
         password,
+        displayName: displayName.trim() || email.split('@')[0]
+      });
+
+      const { error } = await supabase.auth.signUp({
+        email: validated.email,
+        password: validated.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            display_name: displayName || email.split("@")[0],
+            display_name: validated.displayName,
           },
         },
       });
@@ -57,11 +99,22 @@ const Auth = () => {
         description: "Welcome to VoIP Analyzer! Redirecting...",
       });
     } catch (error: any) {
-      toast({
-        title: "Sign Up Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        logError('signup', error);
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        logError('signup', error);
+        const { message } = mapError(error);
+        toast({
+          title: "Sign Up Failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -72,9 +125,14 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      const validated = signInSchema.parse({
+        email: email.trim().toLowerCase(),
+        password
+      });
+
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: validated.email,
+        password: validated.password,
       });
 
       if (error) throw error;
@@ -84,11 +142,22 @@ const Auth = () => {
         description: "Welcome back!",
       });
     } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        logError('signin', error);
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+      } else {
+        logError('signin', error);
+        const { message } = mapError(error);
+        toast({
+          title: "Login Failed",
+          description: message,
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -211,20 +280,20 @@ const Auth = () => {
                   <Label htmlFor="signup-password" className="font-mono text-xs text-primary">
                     PASSWORD
                   </Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={loading}
-                    required
-                    minLength={6}
-                    className="font-mono text-sm bg-background/50"
-                  />
-                  <p className="text-xs text-muted-foreground font-mono">
-                    # Min 6 characters
-                  </p>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={loading}
+                      required
+                      minLength={8}
+                      className="font-mono text-sm bg-background/50"
+                    />
+                    <p className="text-xs text-muted-foreground font-mono">
+                      # Min 8 characters, must include uppercase, lowercase, number & special character
+                    </p>
                 </div>
 
                 <Button

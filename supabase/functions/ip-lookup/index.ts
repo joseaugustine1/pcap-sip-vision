@@ -31,10 +31,6 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const { ip } = await req.json();
 
     if (!ip) {
@@ -46,6 +42,50 @@ serve(async (req) => {
         }
       );
     }
+
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Create client with user context
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    // Verify IP belongs to user's sessions
+    const { data: userSession, error: sessionError } = await supabaseClient
+      .from("call_metrics")
+      .select("session_id")
+      .or(`source_ip.eq.${ip},dest_ip.eq.${ip}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (sessionError || !userSession) {
+      return new Response(
+        JSON.stringify({ error: "IP not found in your sessions" }), 
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Use service role for database operations
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Check if IP is public
     if (!isPublicIP(ip)) {
@@ -126,10 +166,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error in ip-lookup function:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    console.error('[IP-LOOKUP]', {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Failed to lookup IP address. Please try again later.' }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
