@@ -1,25 +1,78 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { UploadSection } from "@/components/voip/UploadSection";
 import { SessionList } from "@/components/voip/SessionList";
 import { SessionDetails } from "@/components/voip/SessionDetails";
-import { Activity } from "lucide-react";
+import { UserProfile } from "@/components/voip/UserProfile";
+import { Activity, Terminal, Loader2 } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
 
 const Index = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground font-mono">
+            {'>'} INITIALIZING SYSTEM...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-primary/30 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-primary-glow">
-              <Activity className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/20 border border-primary/30">
+                <Terminal className="w-6 h-6 text-primary animate-pulse" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground font-mono">
+                  VoIP <span className="text-primary">Analyzer</span>
+                </h1>
+                <p className="text-xs text-muted-foreground font-mono">
+                  {'>'} PCAP Analysis & Network Troubleshooting
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">VoIP Analyzer</h1>
-              <p className="text-sm text-muted-foreground">Professional PCAP Analysis & Troubleshooting</p>
-            </div>
+            <UserProfile />
           </div>
         </div>
       </header>

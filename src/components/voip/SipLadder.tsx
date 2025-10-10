@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
+import { IpLookupBadge } from "./IpLookupBadge";
 
 interface SipLadderProps {
   sessionId: string;
@@ -97,74 +98,112 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
 
   return (
     <div className="space-y-6">
-      {/* IP Address Legend */}
-      <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
-        {uniqueIps.map((ip, index) => (
-          <div key={ip} className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full bg-chart-${(index % 5) + 1}`} />
-            <code className="text-sm font-mono">{ip}</code>
+      {/* IP Address Legend - Wireshark Style */}
+      <div className="grid grid-cols-2 gap-3 p-4 bg-background/50 border border-primary/30 rounded font-mono text-xs">
+        <div className="font-bold text-primary">{'>'} ENDPOINT_A</div>
+        <div className="font-bold text-primary">{'>'} ENDPOINT_B</div>
+        {uniqueIps.slice(0, 2).map((ip, index) => (
+          <div key={ip} className="flex items-center gap-2 text-foreground">
+            <div className={`w-2 h-2 rounded-full bg-chart-${index + 1} shadow-[0_0_8px_currentColor]`} style={{color: `hsl(var(--chart-${index + 1}))`}} />
+            <code className="text-xs">{ip}</code>
           </div>
         ))}
       </div>
 
-      {/* SIP Ladder */}
-      <ScrollArea className="h-[600px] border border-border rounded-lg bg-card/50">
-        <div className="p-6 space-y-4">
-          {messages.map((msg, index) => {
-            const sourceIndex = uniqueIps.indexOf(msg.source_ip);
-            const destIndex = uniqueIps.indexOf(msg.dest_ip);
-            const direction = sourceIndex < destIndex ? "right" : "left";
+      {/* SIP Ladder - Wireshark Flow Style */}
+      <ScrollArea className="h-[600px] border border-primary/30 rounded bg-background/30">
+        <div className="p-6">
+          {/* Timeline Header */}
+          <div className="flex items-center gap-4 mb-6 pb-3 border-b border-primary/30">
+            <div className="w-24 text-xs font-mono text-primary">TIME</div>
+            <div className="flex-1 grid grid-cols-3 gap-2">
+              <div className="text-xs font-mono text-center text-primary">SOURCE</div>
+              <div className="text-xs font-mono text-center text-primary">METHOD/STATUS</div>
+              <div className="text-xs font-mono text-center text-primary">DESTINATION</div>
+            </div>
+          </div>
 
-            return (
-              <div key={msg.id} className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{format(new Date(msg.timestamp), "HH:mm:ss.SSS")}</span>
+          {/* Messages */}
+          <div className="space-y-3">
+            {messages.map((msg, index) => {
+              const sourceIndex = uniqueIps.indexOf(msg.source_ip);
+              const destIndex = uniqueIps.indexOf(msg.dest_ip);
+              const direction = sourceIndex < destIndex ? "right" : "left";
+
+              return (
+                <div key={msg.id} className="group relative">
+                  <div className="flex items-center gap-4 hover:bg-primary/5 p-2 rounded transition-colors">
+                    {/* Timestamp */}
+                    <div className="w-24 text-xs font-mono text-muted-foreground">
+                      {format(new Date(msg.timestamp), "HH:mm:ss.SSS")}
+                    </div>
+
+                    {/* Flow Diagram */}
+                    <div className="flex-1 grid grid-cols-3 gap-2 items-center">
+                      {/* Source */}
+                      <div className={`text-xs font-mono ${direction === "right" ? "text-right pr-2" : "text-left pl-2"} space-y-1`}>
+                        <div className="flex items-center gap-1 justify-end">
+                          <div className="text-foreground">{msg.source_ip}</div>
+                        </div>
+                        <div className="text-muted-foreground">:{msg.source_port}</div>
+                        <IpLookupBadge ip={msg.source_ip} />
+                      </div>
+
+                      {/* Arrow and Message */}
+                      <div className="flex items-center justify-center gap-2 relative">
+                        {direction === "right" ? (
+                          <>
+                            <div className="flex-1 h-px bg-gradient-to-r from-primary/50 to-primary" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Badge 
+                                className={`${getMessageColor(msg)} text-[10px] px-2 py-0.5 font-mono shadow-lg`}
+                              >
+                                {getMessageLabel(msg)}
+                              </Badge>
+                            </div>
+                            <ArrowRight className="w-4 h-4 text-primary drop-shadow-[0_0_6px_currentColor]" />
+                          </>
+                        ) : (
+                          <>
+                            <ArrowRight className="w-4 h-4 text-primary rotate-180 drop-shadow-[0_0_6px_currentColor]" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Badge 
+                                className={`${getMessageColor(msg)} text-[10px] px-2 py-0.5 font-mono shadow-lg`}
+                              >
+                                {getMessageLabel(msg)}
+                              </Badge>
+                            </div>
+                            <div className="flex-1 h-px bg-gradient-to-l from-primary/50 to-primary" />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Destination */}
+                      <div className={`text-xs font-mono ${direction === "left" ? "text-right pr-2" : "text-left pl-2"} space-y-1`}>
+                        <div className="flex items-center gap-1">
+                          <div className="text-foreground">{msg.dest_ip}</div>
+                        </div>
+                        <div className="text-muted-foreground">:{msg.dest_port}</div>
+                        <IpLookupBadge ip={msg.dest_ip} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message Content Expandable */}
+                  {msg.content && (
+                    <details className="ml-28 mt-2">
+                      <summary className="text-xs text-primary cursor-pointer hover:text-primary-glow font-mono">
+                        {'>'} VIEW_RAW_MESSAGE
+                      </summary>
+                      <pre className="mt-2 p-3 bg-background/80 border border-primary/20 rounded text-[10px] overflow-auto font-mono text-muted-foreground">
+                        {msg.content}
+                      </pre>
+                    </details>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-4">
-                  {/* Source IP */}
-                  <div className="w-32 text-right">
-                    <code className="text-xs font-mono">{msg.source_ip}</code>
-                    <div className="text-xs text-muted-foreground">:{msg.source_port}</div>
-                  </div>
-
-                  {/* Arrow and Message */}
-                  <div className="flex-1 flex items-center gap-2">
-                    {direction === "right" ? (
-                      <>
-                        <div className="flex-1 h-px bg-border" />
-                        <Badge className={getMessageColor(msg)}>{getMessageLabel(msg)}</Badge>
-                        <ArrowRight className="w-4 h-4 text-primary" />
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="w-4 h-4 text-primary rotate-180" />
-                        <Badge className={getMessageColor(msg)}>{getMessageLabel(msg)}</Badge>
-                        <div className="flex-1 h-px bg-border" />
-                      </>
-                    )}
-                  </div>
-
-                  {/* Destination IP */}
-                  <div className="w-32 text-left">
-                    <code className="text-xs font-mono">{msg.dest_ip}</code>
-                    <div className="text-xs text-muted-foreground">:{msg.dest_port}</div>
-                  </div>
-                </div>
-
-                {msg.content && (
-                  <details className="ml-36 mr-36">
-                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                      View message content
-                    </summary>
-                    <pre className="mt-2 p-3 bg-muted/50 rounded text-xs overflow-auto">
-                      {msg.content}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </ScrollArea>
     </div>

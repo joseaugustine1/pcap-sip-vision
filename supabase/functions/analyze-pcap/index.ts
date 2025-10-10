@@ -55,11 +55,38 @@ serve(async (req) => {
       const packetsSent = Math.floor(duration * 50); // ~50 packets/sec
       const packetLoss = Math.floor(Math.random() * (packetsSent * 0.05)); // 0-5% loss
 
-      // Calculate MOS score (1-5) based on quality
-      const jitterImpact = Math.max(0, (baseJitter - 10) / 20);
-      const latencyImpact = Math.max(0, (baseLatency - 50) / 100);
-      const lossImpact = (packetLoss / packetsSent) * 10;
-      const mosScore = Math.max(1.0, 4.5 - jitterImpact - latencyImpact - lossImpact);
+      // Calculate MOS using E-Model (ITU-T G.107)
+      // R-factor calculation based on network impairments
+      const packetLossPercent = (packetLoss / packetsSent) * 100;
+      
+      // Delay impairment (Id)
+      const effectiveLatency = baseLatency + (baseJitter * 2); // Account for jitter buffer
+      const Id = effectiveLatency < 177.3 
+        ? 0.024 * effectiveLatency 
+        : 0.024 * effectiveLatency + 0.11 * (effectiveLatency - 177.3);
+      
+      // Equipment impairment (Ie) - codec-specific
+      const codecImpairment = 10; // G.711 typical value
+      
+      // Packet loss impairment (Ie-eff)
+      const Bpl = 17; // Packet loss robustness factor for G.711
+      const Ie_eff = codecImpairment + (95 - codecImpairment) * (packetLossPercent / (packetLossPercent + Bpl));
+      
+      // Calculate R-factor
+      const R0 = 94.2; // Base R-value
+      const Is = 1.5; // Simultaneous impairment
+      const R = Math.max(0, Math.min(100, R0 - Id - Ie_eff - Is));
+      
+      // Convert R-factor to MOS (ITU-T G.107)
+      let mosScore;
+      if (R < 0) {
+        mosScore = 1.0;
+      } else if (R < 100) {
+        mosScore = 1 + 0.035 * R + R * (R - 60) * (100 - R) * 7 * 0.000001;
+      } else {
+        mosScore = 4.5;
+      }
+      mosScore = Math.max(1.0, Math.min(5.0, mosScore));
 
       const sourceIp = `10.0.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 255)}`;
       const destIp = `10.0.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 255)}`;

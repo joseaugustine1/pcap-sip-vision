@@ -32,10 +32,14 @@ export const UploadSection = () => {
     setUploading(true);
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       // Create analysis session
       const { data: session, error: sessionError } = await supabase
         .from("analysis_sessions")
-        .insert([{ name: sessionName, status: "processing" }])
+        .insert([{ name: sessionName, status: "processing", user_id: user.id }])
         .select()
         .single();
 
@@ -91,32 +95,40 @@ export const UploadSection = () => {
   };
 
   return (
-    <Card className="p-6 bg-gradient-to-br from-card to-card/50 border-border shadow-lg">
+    <Card className="p-6 bg-card/50 border-primary/30">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-primary/10">
+        <div className="p-2 rounded-lg bg-primary/20 border border-primary/30">
           <Upload className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Upload PCAP Files</h2>
-          <p className="text-sm text-muted-foreground">Analyze multiple captures for VoIP quality metrics</p>
+          <h2 className="text-xl font-semibold text-foreground font-mono">
+            {'>'} UPLOAD_PCAP_FILES
+          </h2>
+          <p className="text-xs text-muted-foreground font-mono">
+            # Analyze network captures for VoIP quality metrics
+          </p>
         </div>
       </div>
 
       <div className="space-y-4">
         <div>
-          <Label htmlFor="session-name">Session Name</Label>
+          <Label htmlFor="session-name" className="font-mono text-xs text-primary">
+            SESSION_NAME
+          </Label>
           <Input
             id="session-name"
-            placeholder="e.g., Production Call Quality - Jan 2024"
+            placeholder="production_call_quality_jan2024"
             value={sessionName}
             onChange={(e) => setSessionName(e.target.value)}
             disabled={uploading}
-            className="mt-1.5"
+            className="mt-1.5 font-mono text-sm bg-background/50"
           />
         </div>
 
         <div>
-          <Label htmlFor="pcap-files">PCAP Files</Label>
+          <Label htmlFor="pcap-files" className="font-mono text-xs text-primary">
+            PCAP_FILES
+          </Label>
           <Input
             id="pcap-files"
             type="file"
@@ -124,12 +136,12 @@ export const UploadSection = () => {
             multiple
             onChange={handleFileChange}
             disabled={uploading}
-            className="mt-1.5"
+            className="mt-1.5 font-mono text-sm bg-background/50"
           />
           {files.length > 0 && (
             <div className="mt-3 space-y-2">
               {files.map((file, index) => (
-                <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
+                <div key={index} className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-primary/10 border border-primary/20 px-3 py-2 rounded">
                   <FileCheck className="w-4 h-4 text-success" />
                   <span className="flex-1">{file.name}</span>
                   <span className="text-xs">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
@@ -142,18 +154,18 @@ export const UploadSection = () => {
         <Button 
           onClick={handleUpload} 
           disabled={uploading || files.length === 0 || !sessionName.trim()}
-          className="w-full"
+          className="w-full font-mono"
           size="lg"
         >
           {uploading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Uploading & Analyzing...
+              PROCESSING...
             </>
           ) : (
             <>
               <Upload className="w-4 h-4 mr-2" />
-              Upload & Analyze
+              {'>> UPLOAD & ANALYZE'}
             </>
           )}
         </Button>

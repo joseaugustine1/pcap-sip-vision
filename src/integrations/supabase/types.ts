@@ -24,6 +24,7 @@ export type Database = {
           name: string
           status: string
           total_calls: number | null
+          user_id: string | null
         }
         Insert: {
           avg_jitter?: number | null
@@ -34,6 +35,7 @@ export type Database = {
           name: string
           status?: string
           total_calls?: number | null
+          user_id?: string | null
         }
         Update: {
           avg_jitter?: number | null
@@ -44,6 +46,7 @@ export type Database = {
           name?: string
           status?: string
           total_calls?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -162,6 +165,39 @@ export type Database = {
           },
         ]
       }
+      ip_lookups: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          ip_address: string
+          isp: string | null
+          lookup_data: Json | null
+          org: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_address: string
+          isp?: string | null
+          lookup_data?: Json | null
+          org?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string
+          isp?: string | null
+          lookup_data?: Json | null
+          org?: string | null
+        }
+        Relationships: []
+      }
       pcap_files: {
         Row: {
           file_name: string
@@ -196,6 +232,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       sip_messages: {
         Row: {
