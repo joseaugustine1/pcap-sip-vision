@@ -117,18 +117,21 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
 
   return (
     <div className="space-y-4">
-      {/* SIP Ladder - Compact Wireshark Style */}
+      {/* SIP Ladder - Wireshark Style */}
       <div className="border border-border rounded-lg bg-background/50 overflow-hidden">
         {/* Header with IP addresses */}
-        <div className="grid grid-cols-[140px_1fr_1fr_200px] gap-2 p-3 bg-muted/30 border-b border-border text-xs font-mono">
+        <div className="grid grid-cols-[140px_1fr_200px] gap-4 p-3 bg-muted/30 border-b border-border text-xs font-mono">
           <div className="font-semibold">Time</div>
-          <div className="font-semibold text-center">{uniqueIps[0] || "Source"}</div>
-          <div className="font-semibold text-center">{uniqueIps[1] || "Destination"}</div>
+          <div className="font-semibold text-center grid grid-cols-[1fr_auto_1fr] items-center">
+            <span className="text-right">{uniqueIps[0] || "Source"}</span>
+            <span className="px-8"></span>
+            <span className="text-left">{uniqueIps[1] || "Destination"}</span>
+          </div>
           <div className="font-semibold">Comment</div>
         </div>
 
         {/* Message rows */}
-        <ScrollArea className="h-[calc(100vh-400px)] min-h-[400px]">
+        <ScrollArea className="max-h-[600px]">
           <div className="divide-y divide-border/50">
             {messages.map((msg) => {
               const sourceIndex = uniqueIps.indexOf(msg.source_ip);
@@ -139,7 +142,7 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
               return (
                 <div key={msg.id} className="hover:bg-muted/20 transition-colors">
                   <div
-                    className="grid grid-cols-[140px_1fr_1fr_200px] gap-2 p-2 cursor-pointer"
+                    className="grid grid-cols-[140px_1fr_200px] gap-4 p-2 cursor-pointer"
                     onClick={() => setSelectedMessage(isSelected ? null : msg.id)}
                   >
                     {/* Timestamp */}
@@ -147,36 +150,54 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
                       {format(new Date(msg.timestamp), "yyyy-MM-dd HH:mm:ss.SSS")}
                     </div>
 
-                    {/* Source Column */}
-                    <div className="flex items-center justify-center">
-                      {isLeftToRight ? (
-                        <div className="flex items-center gap-1 text-[10px] font-mono">
-                          <span className="text-muted-foreground">{msg.source_port}</span>
-                        </div>
-                      ) : (
-                        <div className="w-full h-0.5 bg-gradient-to-l from-success via-success/50 to-transparent relative">
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-r-[6px] border-r-success border-b-[4px] border-b-transparent rotate-180" />
-                        </div>
-                      )}
-                    </div>
+                    {/* Arrow and Message Label in Center */}
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                      {/* Source Port */}
+                      <div className="text-right">
+                        {isLeftToRight && (
+                          <span className="text-[10px] font-mono text-muted-foreground">{msg.source_port}</span>
+                        )}
+                      </div>
 
-                    {/* Destination Column */}
-                    <div className="flex items-center justify-center">
-                      {isLeftToRight ? (
-                        <div className="w-full h-0.5 bg-gradient-to-r from-success via-success/50 to-transparent relative">
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-success border-b-[4px] border-b-transparent" />
+                      {/* Center: Arrow with Label */}
+                      <div className="flex items-center justify-center min-w-[200px] px-2">
+                        <div className="relative flex items-center w-full">
+                          {isLeftToRight ? (
+                            <>
+                              <div className="flex-1 h-0.5 bg-success" />
+                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 whitespace-nowrap">
+                                <span className={`text-xs font-medium ${getMessageColor(msg)}`}>
+                                  {getMessageLabel(msg)}
+                                </span>
+                              </div>
+                              <div className="w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-success border-b-[4px] border-b-transparent" />
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-0 h-0 border-t-[4px] border-t-transparent border-r-[6px] border-r-success border-b-[4px] border-b-transparent" />
+                              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 whitespace-nowrap">
+                                <span className={`text-xs font-medium ${getMessageColor(msg)}`}>
+                                  {getMessageLabel(msg)}
+                                </span>
+                              </div>
+                              <div className="flex-1 h-0.5 bg-success" />
+                            </>
+                          )}
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-[10px] font-mono">
-                          <span className="text-muted-foreground">{msg.dest_port}</span>
-                        </div>
-                      )}
+                      </div>
+
+                      {/* Destination Port */}
+                      <div className="text-left">
+                        {!isLeftToRight && (
+                          <span className="text-[10px] font-mono text-muted-foreground">{msg.dest_port}</span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Comment */}
                     <div className="text-xs truncate">
-                      <span className={getMessageColor(msg)}>
-                        {extractComment(msg) || getMessageLabel(msg)}
+                      <span className="text-muted-foreground">
+                        {extractComment(msg)}
                       </span>
                     </div>
                   </div>

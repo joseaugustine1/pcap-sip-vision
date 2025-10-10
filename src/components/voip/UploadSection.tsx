@@ -65,12 +65,17 @@ export const UploadSection = () => {
         }]);
       }
 
-      // Trigger analysis
-      const { error: functionError } = await supabase.functions.invoke("analyze-pcap", {
+      // Trigger analysis - invoke returns data/error, not just error
+      const { data: analysisData, error: functionError } = await supabase.functions.invoke("analyze-pcap", {
         body: { sessionId: session.id },
       });
 
-      if (functionError) throw functionError;
+      if (functionError) {
+        console.error("Edge function error:", functionError);
+        throw functionError;
+      }
+
+      console.log("Analysis triggered successfully:", analysisData);
 
       toast({
         title: "Upload Successful",

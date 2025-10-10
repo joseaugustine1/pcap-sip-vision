@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, User, Clock, Radio } from "lucide-react";
+import { Phone, User, Clock, Radio, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
 interface CdrDetailsProps {
   sessionId: string;
@@ -22,6 +24,7 @@ interface CdrInfo {
 export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
   const [cdrData, setCdrData] = useState<CdrInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
     loadCdrData();
@@ -100,14 +103,28 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
   }
 
   return (
-    <div className="space-y-4">
-      {cdrData.map((cdr, index) => (
-        <Card key={index} className="p-6 glass-card">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card className="p-6 glass-card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Radio className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Call Detail Records</h3>
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm">
+              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
           <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-border">
-              <Radio className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Call Detail Record #{index + 1}</h3>
-            </div>
+            {cdrData.map((cdr, index) => (
+              <div key={index} className="border border-border rounded-lg p-4 bg-background/30">
+                <div className="flex items-center gap-2 pb-3 border-b border-border/50 mb-4">
+                  <Phone className="w-4 h-4 text-primary" />
+                  <h4 className="font-medium text-sm text-foreground">Call #{index + 1}</h4>
+                </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Caller Info */}
@@ -177,10 +194,12 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
                   )}
                 </div>
               </div>
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </Card>
-      ))}
-    </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };

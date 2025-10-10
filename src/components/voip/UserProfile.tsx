@@ -10,9 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, Moon, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/use-theme";
 
 interface Profile {
   display_name: string | null;
@@ -24,6 +25,7 @@ export const UserProfile = () => {
   const [userEmail, setUserEmail] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     loadProfile();
@@ -90,6 +92,20 @@ export const UserProfile = () => {
             <p className="text-xs text-muted-foreground">{userEmail}</p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+          Theme
+        </DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => setTheme('light')} className="font-mono text-xs cursor-pointer">
+          <Sun className="mr-2 h-4 w-4" />
+          <span>Light Mode</span>
+          {theme === 'light' && <span className="ml-auto">✓</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme('dark')} className="font-mono text-xs cursor-pointer">
+          <Moon className="mr-2 h-4 w-4" />
+          <span>Dark Mode</span>
+          {theme === 'dark' && <span className="ml-auto">✓</span>}
+        </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border" />
         <DropdownMenuItem onClick={handleSignOut} className="font-mono text-xs">
           <LogOut className="mr-2 h-4 w-4" />
