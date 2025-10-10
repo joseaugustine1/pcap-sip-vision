@@ -7,6 +7,7 @@ import { MetricsOverview } from "./MetricsOverview";
 import { CallMetricsTable } from "./CallMetricsTable";
 import { SipLadder } from "./SipLadder";
 import { IntervalChart } from "./IntervalChart";
+import { CdrDetails } from "./CdrDetails";
 import { Loader2 } from "lucide-react";
 
 interface SessionDetailsProps {
@@ -99,6 +100,8 @@ export const SessionDetails = ({ sessionId }: SessionDetailsProps) => {
           </div>
         </Card>
       )}
+
+      <CdrDetails sessionId={sessionId} />
       
       <MetricsOverview session={session} calls={calls} />
 

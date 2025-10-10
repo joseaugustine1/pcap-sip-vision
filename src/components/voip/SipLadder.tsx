@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { IpLookupBadge } from "./IpLookupBadge";
 
@@ -28,6 +28,7 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
   const [messages, setMessages] = useState<SipMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uniqueIps, setUniqueIps] = useState<string[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadSipMessages();
@@ -79,6 +80,24 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
     return msg.message_type;
   };
 
+  const extractComment = (msg: SipMessage) => {
+    if (!msg.content) return "";
+    
+    // Extract From header for comment
+    const fromMatch = msg.content.match(/From:\s*(.+)/i);
+    const toMatch = msg.content.match(/To:\s*(.+)/i);
+    
+    let comment = "";
+    if (msg.method) {
+      comment = `SIP ${msg.method}`;
+      if (fromMatch) comment += ` From: ${fromMatch[1].split('\n')[0].trim()}`;
+    } else if (msg.status_code) {
+      comment = `SIP Status ${msg.status_code}`;
+    }
+    
+    return comment;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -97,115 +116,85 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* IP Address Legend - Wireshark Style */}
-      <div className="grid grid-cols-2 gap-3 p-4 bg-background/50 border border-primary/30 rounded font-mono text-xs">
-        <div className="font-bold text-primary">{'>'} ENDPOINT_A</div>
-        <div className="font-bold text-primary">{'>'} ENDPOINT_B</div>
-        {uniqueIps.slice(0, 2).map((ip, index) => (
-          <div key={ip} className="flex items-center gap-2 text-foreground">
-            <div className={`w-2 h-2 rounded-full bg-chart-${index + 1} shadow-[0_0_8px_currentColor]`} style={{color: `hsl(var(--chart-${index + 1}))`}} />
-            <code className="text-xs">{ip}</code>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-4">
+      {/* SIP Ladder - Compact Wireshark Style */}
+      <div className="border border-border rounded-lg bg-background/50 overflow-hidden">
+        {/* Header with IP addresses */}
+        <div className="grid grid-cols-[140px_1fr_1fr_200px] gap-2 p-3 bg-muted/30 border-b border-border text-xs font-mono">
+          <div className="font-semibold">Time</div>
+          <div className="font-semibold text-center">{uniqueIps[0] || "Source"}</div>
+          <div className="font-semibold text-center">{uniqueIps[1] || "Destination"}</div>
+          <div className="font-semibold">Comment</div>
+        </div>
 
-      {/* SIP Ladder - Wireshark Flow Style */}
-      <ScrollArea className="h-[600px] border border-primary/30 rounded bg-background/30">
-        <div className="p-6">
-          {/* Timeline Header */}
-          <div className="flex items-center gap-4 mb-6 pb-3 border-b border-primary/30">
-            <div className="w-24 text-xs font-mono text-primary">TIME</div>
-            <div className="flex-1 grid grid-cols-3 gap-2">
-              <div className="text-xs font-mono text-center text-primary">SOURCE</div>
-              <div className="text-xs font-mono text-center text-primary">METHOD/STATUS</div>
-              <div className="text-xs font-mono text-center text-primary">DESTINATION</div>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="space-y-3">
-            {messages.map((msg, index) => {
+        {/* Message rows */}
+        <ScrollArea className="h-[calc(100vh-400px)] min-h-[400px]">
+          <div className="divide-y divide-border/50">
+            {messages.map((msg) => {
               const sourceIndex = uniqueIps.indexOf(msg.source_ip);
               const destIndex = uniqueIps.indexOf(msg.dest_ip);
-              const direction = sourceIndex < destIndex ? "right" : "left";
+              const isLeftToRight = sourceIndex < destIndex;
+              const isSelected = selectedMessage === msg.id;
 
               return (
-                <div key={msg.id} className="group relative">
-                  <div className="flex items-center gap-4 hover:bg-primary/5 p-2 rounded transition-colors">
+                <div key={msg.id} className="hover:bg-muted/20 transition-colors">
+                  <div
+                    className="grid grid-cols-[140px_1fr_1fr_200px] gap-2 p-2 cursor-pointer"
+                    onClick={() => setSelectedMessage(isSelected ? null : msg.id)}
+                  >
                     {/* Timestamp */}
-                    <div className="w-24 text-xs font-mono text-muted-foreground">
-                      {format(new Date(msg.timestamp), "HH:mm:ss.SSS")}
+                    <div className="text-xs font-mono text-muted-foreground">
+                      {format(new Date(msg.timestamp), "yyyy-MM-dd HH:mm:ss.SSS")}
                     </div>
 
-                    {/* Flow Diagram */}
-                    <div className="flex-1 grid grid-cols-3 gap-2 items-center">
-                      {/* Source */}
-                      <div className={`text-xs font-mono ${direction === "right" ? "text-right pr-2" : "text-left pl-2"} space-y-1`}>
-                        <div className="flex items-center gap-1 justify-end">
-                          <div className="text-foreground">{msg.source_ip}</div>
+                    {/* Source Column */}
+                    <div className="flex items-center justify-center">
+                      {isLeftToRight ? (
+                        <div className="flex items-center gap-1 text-[10px] font-mono">
+                          <span className="text-muted-foreground">{msg.source_port}</span>
                         </div>
-                        <div className="text-muted-foreground">:{msg.source_port}</div>
-                        <IpLookupBadge ip={msg.source_ip} />
-                      </div>
-
-                      {/* Arrow and Message */}
-                      <div className="flex items-center justify-center gap-2 relative">
-                        {direction === "right" ? (
-                          <>
-                            <div className="flex-1 h-px bg-gradient-to-r from-primary/50 to-primary" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Badge 
-                                className={`${getMessageColor(msg)} text-[10px] px-2 py-0.5 font-mono shadow-lg`}
-                              >
-                                {getMessageLabel(msg)}
-                              </Badge>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-primary drop-shadow-[0_0_6px_currentColor]" />
-                          </>
-                        ) : (
-                          <>
-                            <ArrowRight className="w-4 h-4 text-primary rotate-180 drop-shadow-[0_0_6px_currentColor]" />
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Badge 
-                                className={`${getMessageColor(msg)} text-[10px] px-2 py-0.5 font-mono shadow-lg`}
-                              >
-                                {getMessageLabel(msg)}
-                              </Badge>
-                            </div>
-                            <div className="flex-1 h-px bg-gradient-to-l from-primary/50 to-primary" />
-                          </>
-                        )}
-                      </div>
-
-                      {/* Destination */}
-                      <div className={`text-xs font-mono ${direction === "left" ? "text-right pr-2" : "text-left pl-2"} space-y-1`}>
-                        <div className="flex items-center gap-1">
-                          <div className="text-foreground">{msg.dest_ip}</div>
+                      ) : (
+                        <div className="w-full h-0.5 bg-gradient-to-l from-success via-success/50 to-transparent relative">
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-r-[6px] border-r-success border-b-[4px] border-b-transparent rotate-180" />
                         </div>
-                        <div className="text-muted-foreground">:{msg.dest_port}</div>
-                        <IpLookupBadge ip={msg.dest_ip} />
-                      </div>
+                      )}
+                    </div>
+
+                    {/* Destination Column */}
+                    <div className="flex items-center justify-center">
+                      {isLeftToRight ? (
+                        <div className="w-full h-0.5 bg-gradient-to-r from-success via-success/50 to-transparent relative">
+                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-l-[6px] border-l-success border-b-[4px] border-b-transparent" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[10px] font-mono">
+                          <span className="text-muted-foreground">{msg.dest_port}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Comment */}
+                    <div className="text-xs truncate">
+                      <span className={getMessageColor(msg)}>
+                        {extractComment(msg) || getMessageLabel(msg)}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Message Content Expandable */}
-                  {msg.content && (
-                    <details className="ml-28 mt-2">
-                      <summary className="text-xs text-primary cursor-pointer hover:text-primary-glow font-mono">
-                        {'>'} VIEW_RAW_MESSAGE
-                      </summary>
-                      <pre className="mt-2 p-3 bg-background/80 border border-primary/20 rounded text-[10px] overflow-auto font-mono text-muted-foreground">
+                  {/* Expanded Raw Message */}
+                  {isSelected && msg.content && (
+                    <div className="px-4 pb-3 bg-muted/10">
+                      <pre className="p-3 bg-background border border-border rounded text-[10px] overflow-auto font-mono text-foreground max-h-60">
                         {msg.content}
                       </pre>
-                    </details>
+                    </div>
                   )}
                 </div>
               );
             })}
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
     </div>
   );
 };

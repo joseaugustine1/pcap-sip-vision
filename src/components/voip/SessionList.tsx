@@ -172,18 +172,16 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
             </div>
           ) : (
             sessions.map((session) => (
-              <div
+              <button
                 key={session.id}
-                className={`relative p-4 rounded-xl border transition-all ${
+                onClick={() => onSelectSession(session.id)}
+                className={`relative p-4 rounded-xl border transition-all w-full text-left ${
                   selectedSessionId === session.id
                     ? "bg-primary/10 border-primary shadow-lg"
                     : "bg-background/50 border-border hover:border-primary/50 hover:shadow-md"
                 }`}
               >
-                <button
-                  onClick={() => onSelectSession(session.id)}
-                  className="w-full text-left"
-                >
+                <div className="pr-10">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h4 className="font-medium text-sm text-foreground line-clamp-2">{session.name}</h4>
                     <div className="flex items-center gap-1">
@@ -195,6 +193,12 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
                     <Badge variant="outline" className={`text-xs ${getStatusColor(session.status)}`}>
                       {session.status}
                     </Badge>
+
+                    {session.status === 'processing' && (
+                      <div className="text-xs text-muted-foreground animate-pulse">
+                        Analyzing PCAP files...
+                      </div>
+                    )}
 
                     {session.avg_mos !== null && (
                       <div className="flex items-center gap-2 text-xs">
@@ -210,8 +214,8 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
                       {formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}
                     </div>
                   </div>
-                </button>
-                
+                </div>
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -220,7 +224,7 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </div>
+              </button>
             ))
           )}
         </div>
