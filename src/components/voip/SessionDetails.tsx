@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { MetricsOverview } from "./MetricsOverview";
 import { CallMetricsTable } from "./CallMetricsTable";
@@ -70,17 +71,38 @@ export const SessionDetails = ({ sessionId }: SessionDetailsProps) => {
 
   if (loading) {
     return (
-      <Card className="p-12 flex items-center justify-center bg-card border-border">
+      <Card className="p-12 flex items-center justify-center glass-card">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </Card>
     );
   }
 
+  const isProcessing = session?.status === 'processing' || session?.status === 'pending';
+  const progress = session?.status === 'completed' ? 100 : 
+                   session?.status === 'processing' ? 50 : 0;
+
   return (
     <div className="space-y-6">
+      {isProcessing && (
+        <Card className="p-6 glass-card">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm font-medium">
+                  {session?.status === 'pending' ? 'Starting analysis...' : 'Analyzing PCAP files...'}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground">{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        </Card>
+      )}
+      
       <MetricsOverview session={session} calls={calls} />
 
-      <Card className="bg-card border-border">
+      <Card className="glass-card">
         <Tabs defaultValue="calls" className="w-full">
           <div className="border-b border-border px-6">
             <TabsList className="bg-transparent">

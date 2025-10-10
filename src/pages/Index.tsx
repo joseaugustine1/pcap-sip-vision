@@ -56,19 +56,19 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-primary/30 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border glass-card sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20 border border-primary/30">
-                <Terminal className="w-6 h-6 text-primary animate-pulse" />
+              <div className="p-2 rounded-xl bg-primary/20 border border-primary/30">
+                <Terminal className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground font-mono">
+                <h1 className="text-2xl font-bold text-foreground">
                   VoIP <span className="text-primary">Analyzer</span>
                 </h1>
-                <p className="text-xs text-muted-foreground font-mono">
-                  {'>'} PCAP Analysis & Network Troubleshooting
+                <p className="text-xs text-muted-foreground">
+                  PCAP Analysis & Network Troubleshooting
                 </p>
               </div>
             </div>
@@ -97,9 +97,9 @@ const Index = () => {
               {selectedSessionId ? (
                 <SessionDetails sessionId={selectedSessionId} />
               ) : (
-                <div className="bg-card border border-border rounded-xl p-12 text-center">
-                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                    <Activity className="w-8 h-8 text-muted-foreground" />
+                <div className="glass-card p-12 text-center rounded-xl">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center backdrop-blur-sm">
+                    <Activity className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">No Session Selected</h3>
                   <p className="text-muted-foreground">Upload PCAP files or select a session to view analysis</p>

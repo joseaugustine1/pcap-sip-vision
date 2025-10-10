@@ -49,7 +49,7 @@ export const MetricsOverview = ({ session, calls }: MetricsOverviewProps) => {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {metrics.map((metric, index) => (
-        <Card key={index} className="p-6 bg-card border-border hover:shadow-lg transition-shadow">
+        <Card key={index} className="p-6 glass-card hover:shadow-xl transition-all">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <p className="text-sm text-muted-foreground mb-1">{metric.title}</p>
@@ -58,7 +58,7 @@ export const MetricsOverview = ({ session, calls }: MetricsOverviewProps) => {
                 <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
               )}
             </div>
-            <div className={`p-3 rounded-lg ${metric.bgColor}`}>
+            <div className={`p-3 rounded-xl ${metric.bgColor} backdrop-blur-sm`}>
               <metric.icon className={`w-5 h-5 ${metric.color}`} />
             </div>
           </div>

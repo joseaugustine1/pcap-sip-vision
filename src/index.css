@@ -8,112 +8,116 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Matrix/Terminal inspired color scheme - Light Mode */
-    --background: 142 20% 96%;
-    --foreground: 142 50% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 142 50% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 142 50% 10%;
-
-    --primary: 142 76% 45%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 142 76% 55%;
-    --primary-variant: 142 76% 35%;
+    /* iOS Glass Theme - Light translucent backgrounds */
+    --background: 220 20% 98%;
+    --foreground: 220 15% 10%;
     
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 142 50% 10%;
-
-    --muted: 0 0% 95%;
-    --muted-foreground: 142 30% 40%;
-
-    --accent: 180 100% 40%;
+    /* Glass cards with blur effect */
+    --card: 220 20% 100%;
+    --card-foreground: 220 15% 10%;
+    
+    --popover: 220 20% 100%;
+    --popover-foreground: 220 15% 10%;
+    
+    /* iOS Blue accent */
+    --primary: 211 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 211 100% 60%;
+    --primary-variant: 211 100% 40%;
+    
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 15% 10%;
+    
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 45%;
+    
+    --accent: 211 100% 50%;
     --accent-foreground: 0 0% 100%;
     
-    --warning: 45 93% 47%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     
-    --success: 142 76% 45%;
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-
-    --destructive: 0 80% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 142 30% 85%;
-    --input: 0 0% 95%;
-    --ring: 142 76% 45%;
-
-    --radius: 0.375rem;
     
-    --chart-1: 142 76% 45%;
-    --chart-2: 180 100% 40%;
-    --chart-3: 45 93% 47%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 211 100% 50%;
+    
+    --radius: 1rem;
+    
+    --chart-1: 211 100% 50%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 38 92% 50%;
     --chart-4: 280 80% 55%;
     --chart-5: 340 82% 48%;
     
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-background: 220 20% 98%;
+    --sidebar-foreground: 220 15% 10%;
+    --sidebar-primary: 211 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 15% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 142 76% 45%;
+    --sidebar-ring: 211 100% 50%;
   }
 
   .dark {
-    /* Matrix/Terminal dark theme */
-    --background: 0 0% 6%;
-    --foreground: 142 50% 85%;
-
-    --card: 0 0% 10%;
-    --card-foreground: 142 50% 85%;
-
-    --popover: 0 0% 10%;
-    --popover-foreground: 142 50% 85%;
-
-    --primary: 142 76% 45%;
+    /* iOS Dark Glass Theme */
+    --background: 220 15% 8%;
+    --foreground: 220 10% 95%;
+    
+    /* Glass cards with darker translucent effect */
+    --card: 220 15% 12%;
+    --card-foreground: 220 10% 95%;
+    
+    --popover: 220 15% 12%;
+    --popover-foreground: 220 10% 95%;
+    
+    /* iOS Blue accent (slightly brighter for dark mode) */
+    --primary: 211 100% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 142 76% 55%;
-
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 142 50% 85%;
-
-    --muted: 0 0% 15%;
-    --muted-foreground: 142 30% 50%;
-
-    --accent: 180 100% 40%;
+    --primary-glow: 211 100% 65%;
+    
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 220 10% 95%;
+    
+    --muted: 220 15% 20%;
+    --muted-foreground: 220 10% 60%;
+    
+    --accent: 211 100% 55%;
     --accent-foreground: 0 0% 100%;
     
-    --warning: 45 93% 47%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     
-    --success: 142 76% 45%;
+    --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
-
-    --destructive: 0 80% 50%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 142 30% 20%;
-    --input: 0 0% 15%;
-    --ring: 142 76% 45%;
     
-    --chart-1: 142 76% 45%;
-    --chart-2: 180 100% 40%;
-    --chart-3: 45 93% 47%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 220 15% 25%;
+    --input: 220 15% 25%;
+    --ring: 211 100% 55%;
+    
+    --chart-1: 211 100% 55%;
+    --chart-2: 142 76% 36%;
+    --chart-3: 38 92% 50%;
     --chart-4: 280 80% 55%;
     --chart-5: 340 82% 48%;
     
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 142 76% 45%;
+    --sidebar-background: 220 15% 8%;
+    --sidebar-foreground: 220 10% 95%;
+    --sidebar-primary: 211 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 142 76% 45%;
+    --sidebar-accent: 220 15% 20%;
+    --sidebar-accent-foreground: 220 10% 95%;
+    --sidebar-border: 220 15% 25%;
+    --sidebar-ring: 211 100% 55%;
   }
 }
 
@@ -124,5 +128,25 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(220 20% 95%) 100%);
+  }
+  
+  .dark body {
+    background: linear-gradient(135deg, hsl(220 15% 8%) 0%, hsl(220 15% 5%) 100%);
+  }
+  
+  /* Glass effect for cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  
+  .dark .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }
