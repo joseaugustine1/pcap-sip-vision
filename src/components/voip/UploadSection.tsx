@@ -71,8 +71,13 @@ export const UploadSection = () => {
       });
 
       if (functionError) {
-        console.error("Edge function error:", functionError);
-        throw functionError;
+        console.error("Edge function error details:", {
+          message: functionError.message,
+          status: functionError.status,
+          statusText: functionError.statusText,
+          error: functionError
+        });
+        throw new Error(`Analysis failed: ${functionError.message || 'Unknown error'}`);
       }
 
       console.log("Analysis triggered successfully:", analysisData);
