@@ -1,7 +1,7 @@
 project_id = "rkwkxygebjmzmlgqcuqe"
 
 [functions.analyze-pcap]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ip-lookup]
 verify_jwt = true

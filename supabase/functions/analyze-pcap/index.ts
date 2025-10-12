@@ -10,7 +10,7 @@ serve(async (req) => {
   console.log('[ANALYZE-PCAP] Request received:', {
     method: req.method,
     url: req.url,
-    headers: Object.fromEntries(req.headers.entries())
+    hasAuth: !!req.headers.get('Authorization')
   });
 
   if (req.method === "OPTIONS") {
@@ -31,25 +31,25 @@ serve(async (req) => {
       });
     }
 
-    // Validate authentication
+    // Create client with service role for user verification
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Create client with user context
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader || '' } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    // Get authenticated user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    console.log('[ANALYZE-PCAP] User auth check:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      error: userError?.message 
+    });
+    
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized - Please log in" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
