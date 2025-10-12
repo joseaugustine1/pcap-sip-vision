@@ -7,69 +7,24 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log('[ANALYZE-PCAP] Request received:', {
-    method: req.method,
-    url: req.url,
-    hasAuth: !!req.headers.get('Authorization')
-  });
+  console.log('[ANALYZE-PCAP] Request received');
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const body = await req.json();
-    console.log('[ANALYZE-PCAP] Request body:', body);
-    
-    const { sessionId } = body;
+    const { sessionId } = await req.json();
+    console.log('[ANALYZE-PCAP] Processing session:', sessionId);
     
     if (!sessionId) {
-      console.error('[ANALYZE-PCAP] Missing sessionId in request body');
       return new Response(JSON.stringify({ error: "Missing sessionId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Create client with service role for user verification
-    const authHeader = req.headers.get('Authorization');
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader || '' } } }
-    );
-
-    // Get authenticated user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    console.log('[ANALYZE-PCAP] User auth check:', { 
-      hasUser: !!user, 
-      userId: user?.id,
-      error: userError?.message 
-    });
-    
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized - Please log in" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Verify session belongs to user
-    const { data: session, error: sessionError } = await supabaseClient
-      .from("analysis_sessions")
-      .select("user_id")
-      .eq("id", sessionId)
-      .maybeSingle();
-
-    if (sessionError || !session || session.user_id !== user.id) {
-      return new Response(JSON.stringify({ error: "Forbidden - Session not found or access denied" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Use service role for database writes
+    // Use service role for database operations
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
