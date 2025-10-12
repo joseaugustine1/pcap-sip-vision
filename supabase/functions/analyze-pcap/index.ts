@@ -7,12 +7,29 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('[ANALYZE-PCAP] Request received:', {
+    method: req.method,
+    url: req.url,
+    headers: Object.fromEntries(req.headers.entries())
+  });
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { sessionId } = await req.json();
+    const body = await req.json();
+    console.log('[ANALYZE-PCAP] Request body:', body);
+    
+    const { sessionId } = body;
+    
+    if (!sessionId) {
+      console.error('[ANALYZE-PCAP] Missing sessionId in request body');
+      return new Response(JSON.stringify({ error: "Missing sessionId" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
 
     // Validate authentication
     const authHeader = req.headers.get('Authorization');
