@@ -4,4 +4,4 @@ project_id = "rkwkxygebjmzmlgqcuqe"
 verify_jwt = false
 
 [functions.ip-lookup]
-verify_jwt = true
+verify_jwt = false

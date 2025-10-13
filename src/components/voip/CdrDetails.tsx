@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { Phone, User, Clock, Radio, ChevronDown, ChevronUp } from "lucide-react";
+import { Phone, User, Clock, Radio, ChevronDown, ChevronUp, Globe } from "lucide-react";
+import { IpLookupBadge } from "./IpLookupBadge";
 import { format } from "date-fns";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -144,6 +145,12 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
                     <span className="text-sm font-mono text-foreground">{cdr.fromUser}</span>
                   </div>
                   <p className="text-xs font-mono text-muted-foreground">{cdr.fromUri}</p>
+                  {cdr.fromUri.includes('@') && (
+                    <div className="flex items-center gap-1 pt-1">
+                      <Globe className="w-3 h-3 text-muted-foreground" />
+                      <IpLookupBadge ip={cdr.fromUri.split('@')[1].split(':')[0]} />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -159,6 +166,12 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
                     <span className="text-sm font-mono text-foreground">{cdr.toUser}</span>
                   </div>
                   <p className="text-xs font-mono text-muted-foreground">{cdr.toUri}</p>
+                  {cdr.toUri.includes('@') && (
+                    <div className="flex items-center gap-1 pt-1">
+                      <Globe className="w-3 h-3 text-muted-foreground" />
+                      <IpLookupBadge ip={cdr.toUri.split('@')[1].split(':')[0]} />
+                    </div>
+                  )}
                 </div>
               </div>
 
