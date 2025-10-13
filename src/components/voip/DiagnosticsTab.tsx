@@ -465,16 +465,6 @@ export const DiagnosticsTab = ({ sessionId }: DiagnosticsTabProps) => {
             <AlertTriangle className="w-8 h-8 text-warning opacity-20" />
           </div>
         </Card>
-
-        <Card className="p-4 glass-card border-success/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Calls</p>
-              <p className="text-2xl font-bold text-success">{calls.length}</p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-success opacity-20" />
-          </div>
-        </Card>
       </div>
 
       {/* Issues List */}

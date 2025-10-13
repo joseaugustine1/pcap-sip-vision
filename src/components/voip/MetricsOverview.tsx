@@ -16,13 +16,6 @@ export const MetricsOverview = ({ session, calls }: MetricsOverviewProps) => {
 
   const metrics = [
     {
-      title: "Total Calls",
-      value: calls.length,
-      icon: Phone,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
-    },
-    {
       title: "Average MOS",
       value: session.avg_mos?.toFixed(2) || "N/A",
       icon: Activity,
@@ -47,7 +40,7 @@ export const MetricsOverview = ({ session, calls }: MetricsOverviewProps) => {
   ];
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {metrics.map((metric, index) => (
         <Card key={index} className="p-6 glass-card hover:shadow-xl transition-all">
           <div className="flex items-start justify-between">

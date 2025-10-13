@@ -39,6 +39,23 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
   const [loading, setLoading] = useState(true);
   const { open } = useSidebar();
 
+  const getSessionColor = (sessionId: string) => {
+    const colors = [
+      'bg-red-500',
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-yellow-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-teal-500',
+      'bg-orange-500',
+      'bg-cyan-500',
+    ];
+    const hash = sessionId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return colors[hash % colors.length];
+  };
+
   useEffect(() => {
     loadSessions();
 
@@ -241,7 +258,9 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
                           <>
                             <div className="pr-16">
                               <div className="flex items-center gap-2 mb-2">
-                                {getStatusIcon(session.status)}
+                                <div className={`w-8 h-8 rounded-lg ${getSessionColor(session.id)} flex items-center justify-center text-white font-bold text-sm`}>
+                                  {session.name.charAt(0).toUpperCase()}
+                                </div>
                                 <h4 className="font-medium text-sm text-foreground line-clamp-2 flex-1">
                                   {session.name}
                                 </h4>
@@ -295,7 +314,9 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
                           </>
                         ) : (
                           <div className="flex items-center justify-center">
-                            {getStatusIcon(session.status)}
+                            <div className={`w-8 h-8 rounded-lg ${getSessionColor(session.id)} flex items-center justify-center text-white font-bold text-sm`}>
+                              {session.name.charAt(0).toUpperCase()}
+                            </div>
                           </div>
                         )}
                       </button>
