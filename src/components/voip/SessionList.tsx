@@ -238,12 +238,10 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
                     : "bg-background/50 border-border hover:border-primary/50 hover:shadow-md"
                 }`}
               >
-                <div className="pr-10">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <h4 className="font-medium text-sm text-foreground line-clamp-2">{session.name}</h4>
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(session.status)}
-                    </div>
+                <div className="pr-20">
+                  <div className="flex items-center gap-2 mb-2">
+                    {getStatusIcon(session.status)}
+                    <h4 className="font-medium text-sm text-foreground line-clamp-2 flex-1">{session.name}</h4>
                   </div>
 
                   <div className="space-y-2">

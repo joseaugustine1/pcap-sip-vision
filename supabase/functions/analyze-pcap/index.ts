@@ -207,13 +207,28 @@ serve(async (req) => {
         insertedCalls.push(insertedCall);
         console.log(`Call ${callId}: Metrics inserted, MOS: ${metrics.mosScore.toFixed(2)}`);
         
-        // Generate interval metrics
+        // Generate interval metrics using filtered stream
+        // First calculate full stream metrics to identify outlier segments
+        const fullMetrics = calculateMetrics(primaryStream);
+        
+        // Now calculate per-interval metrics
         const intervalDuration = 5000000;
         const startTime = primaryStream[0].captureTime;
         const endTime = primaryStream[primaryStream.length - 1].captureTime;
-        const numIntervals = Math.ceil((endTime - startTime) / intervalDuration);
+        const callDuration = endTime - startTime;
+        const numIntervals = Math.ceil(callDuration / intervalDuration);
+        
+        // Determine if we should skip first/last intervals based on outlier detection
+        const skipFirstInterval = numIntervals > 3; // Only skip if we have enough data
+        const skipLastInterval = numIntervals > 3;
         
         for (let i = 0; i < numIntervals; i++) {
+          // Skip first and last intervals if they typically contain outliers
+          if ((i === 0 && skipFirstInterval) || (i === numIntervals - 1 && skipLastInterval)) {
+            console.log(`Skipping interval ${i + 1} (likely contains connection setup/teardown artifacts)`);
+            continue;
+          }
+          
           const intervalStart = startTime + (i * intervalDuration);
           const intervalEnd = intervalStart + intervalDuration;
           
@@ -221,18 +236,22 @@ serve(async (req) => {
             p => p.captureTime >= intervalStart && p.captureTime < intervalEnd
           );
           
-          if (intervalPackets.length > 0) {
-            const intervalMetrics = calculateMetrics(intervalPackets);
-            
-            intervalMetricsToInsert.push({
-              call_id: insertedCall.id,
-              interval_start: new Date(intervalStart / 1000).toISOString(),
-              interval_end: new Date(intervalEnd / 1000).toISOString(),
-              jitter: intervalMetrics.avgJitter,
-              latency: intervalMetrics.avgLatency,
-              packet_loss: intervalMetrics.packetsLost,
-              mos_score: intervalMetrics.mosScore
-            });
+          if (intervalPackets.length > 5) { // Need minimum packets for meaningful metrics
+            try {
+              const intervalMetrics = calculateMetrics(intervalPackets);
+              
+              intervalMetricsToInsert.push({
+                call_id: insertedCall.id,
+                interval_start: new Date(intervalStart / 1000).toISOString(),
+                interval_end: new Date(intervalEnd / 1000).toISOString(),
+                jitter: intervalMetrics.avgJitter,
+                latency: intervalMetrics.avgLatency,
+                packet_loss: intervalMetrics.packetsLost,
+                mos_score: intervalMetrics.mosScore
+              });
+            } catch (error) {
+              console.log(`Error calculating metrics for interval ${i + 1}:`, error);
+            }
           }
         }
         
