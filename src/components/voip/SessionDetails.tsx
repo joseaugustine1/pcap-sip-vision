@@ -8,6 +8,8 @@ import { CallMetricsTable } from "./CallMetricsTable";
 import { SipLadder } from "./SipLadder";
 import { IntervalChart } from "./IntervalChart";
 import { CdrDetails } from "./CdrDetails";
+import { AudioPlayback } from "./AudioPlayback";
+import { DiagnosticsTab } from "./DiagnosticsTab";
 import { Loader2 } from "lucide-react";
 
 interface SessionDetailsProps {
@@ -112,6 +114,8 @@ export const SessionDetails = ({ sessionId }: SessionDetailsProps) => {
               <TabsTrigger value="calls">Call Metrics</TabsTrigger>
               <TabsTrigger value="intervals">Time Series</TabsTrigger>
               <TabsTrigger value="sip">SIP Ladder</TabsTrigger>
+              <TabsTrigger value="audio">Audio Playback</TabsTrigger>
+              <TabsTrigger value="diagnostics">Advanced Diagnostics</TabsTrigger>
             </TabsList>
           </div>
 
@@ -125,6 +129,14 @@ export const SessionDetails = ({ sessionId }: SessionDetailsProps) => {
 
           <TabsContent value="sip" className="p-6">
             <SipLadder sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="audio" className="p-6">
+            <AudioPlayback sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="diagnostics" className="p-6">
+            <DiagnosticsTab sessionId={sessionId} />
           </TabsContent>
         </Tabs>
       </Card>

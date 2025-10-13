@@ -8,7 +8,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { mapError, logError } from '@/lib/errorHandler';
 
-export const UploadSection = () => {
+interface UploadSectionProps {
+  onUploadComplete?: () => void;
+}
+
+export const UploadSection = ({ onUploadComplete }: UploadSectionProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [sessionName, setSessionName] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -92,6 +96,11 @@ export const UploadSection = () => {
       setSessionName("");
       const fileInput = document.getElementById("pcap-files") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
+
+      // Trigger callback to refresh UI
+      if (onUploadComplete) {
+        onUploadComplete();
+      }
 
     } catch (error: any) {
       const { data: { user } } = await supabase.auth.getUser();

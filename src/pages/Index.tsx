@@ -12,7 +12,12 @@ const Index = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
+
+  const handleUploadComplete = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   useEffect(() => {
     // Check authentication
@@ -80,13 +85,14 @@ const Index = () => {
       <main className="container mx-auto px-6 py-8">
         <div className="grid gap-6">
           {/* Upload Section */}
-          <UploadSection />
+          <UploadSection onUploadComplete={handleUploadComplete} />
 
           {/* Sessions Grid */}
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Session List */}
             <div className="lg:col-span-1">
               <SessionList 
+                key={refreshTrigger}
                 selectedSessionId={selectedSessionId} 
                 onSelectSession={setSelectedSessionId} 
               />

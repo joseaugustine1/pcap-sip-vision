@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Clock, Activity, CheckCircle, AlertCircle, Loader2, Trash2 } from "lucide-react";
+import { Clock, Activity, CheckCircle, AlertCircle, Loader2, Trash2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -107,6 +107,63 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
     if (mos >= 4.0) return "text-success";
     if (mos >= 3.5) return "text-warning";
     return "text-destructive";
+  };
+
+  const handleDownload = async (sessionId: string, sessionName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Get all PCAP files for this session
+      const { data: pcapFiles, error: filesError } = await supabase
+        .from('pcap_files')
+        .select('*')
+        .eq('session_id', sessionId);
+
+      if (filesError) throw filesError;
+
+      if (!pcapFiles || pcapFiles.length === 0) {
+        toast({
+          title: "No files found",
+          description: "This session has no PCAP files to download.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Download each file
+      for (const file of pcapFiles) {
+        const { data, error } = await supabase.storage
+          .from('pcap-files')
+          .download(file.file_path);
+
+        if (error) throw error;
+
+        // Create download link
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.file_name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      toast({
+        title: "Download started",
+        description: `Downloading ${pcapFiles.length} PCAP file(s)`,
+      });
+    } catch (error: any) {
+      const { data: { user } } = await supabase.auth.getUser();
+      logError('download-pcap', error, user?.id);
+      
+      const { message } = mapError(error);
+      toast({
+        title: "Download Failed",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDelete = async (sessionId: string, e: React.MouseEvent) => {
@@ -216,14 +273,24 @@ export const SessionList = ({ selectedSessionId, onSelectSession }: SessionListP
                   </div>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={(e) => handleDelete(session.id, e)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="absolute top-2 right-2 flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={(e) => handleDownload(session.id, session.name, e)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => handleDelete(session.id, e)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </button>
             ))
           )}
