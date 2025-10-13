@@ -174,6 +174,7 @@ export function calculateMetrics(rtpPackets: RTPPacket[]): CallMetrics {
   }
   
   const jitterValues: number[] = [];
+  const latencyValues: number[] = [];
   let lastTransit = 0;
   
   for (const packet of sortedPackets) {
@@ -185,13 +186,57 @@ export function calculateMetrics(rtpPackets: RTPPacket[]): CallMetrics {
     lastTransit = transit;
   }
   
-  const avgJitter = jitterValues.length > 0 
-    ? jitterValues.reduce((a, b) => a + b, 0) / jitterValues.length 
-    : 0;
-  const maxJitter = jitterValues.length > 0 ? Math.max(...jitterValues) : 0;
+  for (let i = 0; i < jitterValues.length; i++) {
+    latencyValues.push(jitterValues[i] * 4);
+  }
   
-  const avgLatency = avgJitter * 4;
-  const maxLatency = maxJitter * 4;
+  let filteredJitter = [...jitterValues];
+  let filteredLatency = [...latencyValues];
+  let outliersDetected = false;
+  
+  if (jitterValues.length > 10) {
+    const startIdx = Math.floor(jitterValues.length * 0.1);
+    const endIdx = Math.floor(jitterValues.length * 0.9);
+    const middleJitter = jitterValues.slice(startIdx, endIdx);
+    const middleLatency = latencyValues.slice(startIdx, endIdx);
+    
+    const medianJitter = middleJitter.length > 0
+      ? middleJitter.sort((a, b) => a - b)[Math.floor(middleJitter.length / 2)]
+      : 0;
+    const medianLatency = middleLatency.length > 0
+      ? middleLatency.sort((a, b) => a - b)[Math.floor(middleLatency.length / 2)]
+      : 0;
+    
+    const outlierThreshold = 2.0;
+    
+    const firstSegment = jitterValues.slice(0, startIdx);
+    const firstSegmentLatency = latencyValues.slice(0, startIdx);
+    const hasFirstOutliers = firstSegment.some(j => j > medianJitter * outlierThreshold) ||
+                             firstSegmentLatency.some(l => l > medianLatency * outlierThreshold);
+    
+    const lastSegment = jitterValues.slice(endIdx);
+    const lastSegmentLatency = latencyValues.slice(endIdx);
+    const hasLastOutliers = lastSegment.some(j => j > medianJitter * outlierThreshold) ||
+                            lastSegmentLatency.some(l => l > medianLatency * outlierThreshold);
+    
+    if (hasFirstOutliers || hasLastOutliers) {
+      outliersDetected = true;
+      console.log(`[Metrics] Outliers detected - filtering first/last segments (median jitter: ${medianJitter.toFixed(2)}ms, latency: ${medianLatency.toFixed(2)}ms)`);
+      
+      filteredJitter = jitterValues.slice(startIdx, endIdx);
+      filteredLatency = latencyValues.slice(startIdx, endIdx);
+    }
+  }
+  
+  const avgJitter = filteredJitter.length > 0 
+    ? filteredJitter.reduce((a, b) => a + b, 0) / filteredJitter.length 
+    : 0;
+  const maxJitter = filteredJitter.length > 0 ? Math.max(...filteredJitter) : 0;
+  
+  const avgLatency = filteredLatency.length > 0
+    ? filteredLatency.reduce((a, b) => a + b, 0) / filteredLatency.length
+    : 0;
+  const maxLatency = filteredLatency.length > 0 ? Math.max(...filteredLatency) : 0;
   
   const totalPackets = sortedPackets.length + packetsLost;
   const packetLossPercent = (packetsLost / totalPackets) * 100;
@@ -218,7 +263,7 @@ export function calculateMetrics(rtpPackets: RTPPacket[]): CallMetrics {
   }
   mosScore = Math.max(1.0, Math.min(5.0, mosScore));
   
-  return {
+  const result = {
     startTime: new Date(sortedPackets[0].captureTime / 1000),
     endTime: new Date(sortedPackets[sortedPackets.length - 1].captureTime / 1000),
     duration: (sortedPackets[sortedPackets.length - 1].captureTime - sortedPackets[0].captureTime) / 1000000,
@@ -232,6 +277,12 @@ export function calculateMetrics(rtpPackets: RTPPacket[]): CallMetrics {
     mosScore,
     codec: 'G.711'
   };
+  
+  if (outliersDetected) {
+    console.log(`[Metrics] Note: Abnormally high jitter/latency detected in first/last segments - values filtered for accuracy`);
+  }
+  
+  return result;
 }
 
 export function mulawToPcm(mulawByte: number): number {

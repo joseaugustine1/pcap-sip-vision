@@ -24,7 +24,7 @@ interface CdrInfo {
 export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
   const [cdrData, setCdrData] = useState<CdrInfo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     loadCdrData();

@@ -344,34 +344,39 @@ serve(async (req) => {
       }
     }
 
-    const calls = insertedCalls;
+// Calculate session averages using insertedCalls (calls with RTP data)
+const avgMos = insertedCalls.length > 0
+  ? insertedCalls.reduce((sum, c) => sum + c.mos_score, 0) / insertedCalls.length
+  : null;
+const avgJitter = insertedCalls.length > 0
+  ? insertedCalls.reduce((sum, c) => sum + c.avg_jitter, 0) / insertedCalls.length
+  : null;
+const avgLatency = insertedCalls.length > 0
+  ? insertedCalls.reduce((sum, c) => sum + c.avg_latency, 0) / insertedCalls.length
+  : null;
 
-    // Calculate session averages
-    const avgMos = calls.reduce((sum, c) => sum + c.mos_score, 0) / calls.length;
-    const avgJitter = calls.reduce((sum, c) => sum + c.avg_jitter, 0) / calls.length;
-    const avgLatency = calls.reduce((sum, c) => sum + c.avg_latency, 0) / calls.length;
-
-    // Update session status
-    const { error: updateError } = await supabase
-      .from("analysis_sessions")
-      .update({
-        status: "completed",
-        total_calls: calls.length,
-        avg_mos: avgMos,
-        avg_jitter: avgJitter,
-        avg_latency: avgLatency,
-      })
-      .eq("id", sessionId);
+// Update session status with total call count (including those without RTP)
+const { error: updateError } = await supabase
+  .from("analysis_sessions")
+  .update({
+    status: "completed",
+    total_calls: callMap.size, // Total calls including SIP-only calls
+    avg_mos: avgMos,
+    avg_jitter: avgJitter,
+    avg_latency: avgLatency,
+  })
+  .eq("id", sessionId);
 
     if (updateError) throw updateError;
 
-    console.log(`Analysis completed for session ${sessionId}: ${calls.length} calls processed`);
+    console.log(`Analysis completed for session ${sessionId}: ${insertedCalls.length} calls with RTP data, ${callMap.size} total calls`);
 
     return new Response(
       JSON.stringify({
         success: true,
         sessionId,
-        callsProcessed: calls.length,
+        callsProcessed: insertedCalls.length,
+        totalCalls: callMap.size,
         avgMos,
       }),
       {

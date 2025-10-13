@@ -74,9 +74,41 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
     return "text-muted-foreground";
   };
 
+  const getStatusDescription = (code: number): string => {
+    const descriptions: { [key: number]: string } = {
+      100: "Trying",
+      180: "Ringing",
+      181: "Call Forwarded",
+      182: "Queued",
+      183: "Session Progress",
+      200: "OK",
+      202: "Accepted",
+      400: "Bad Request",
+      401: "Unauthorized",
+      403: "Forbidden",
+      404: "Not Found",
+      407: "Proxy Auth Required",
+      408: "Request Timeout",
+      480: "Temporarily Unavailable",
+      481: "Call/Transaction Does Not Exist",
+      486: "Busy Here",
+      487: "Request Terminated",
+      488: "Not Acceptable Here",
+      500: "Server Internal Error",
+      503: "Service Unavailable",
+      600: "Busy Everywhere",
+      603: "Decline",
+      604: "Does Not Exist Anywhere",
+    };
+    return descriptions[code] || "Unknown";
+  };
+
   const getMessageLabel = (msg: SipMessage) => {
     if (msg.method) return msg.method;
-    if (msg.status_code) return `${msg.status_code}`;
+    if (msg.status_code) {
+      const description = getStatusDescription(msg.status_code);
+      return `${msg.status_code} - ${description}`;
+    }
     return msg.message_type;
   };
 

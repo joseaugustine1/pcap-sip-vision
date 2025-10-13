@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface IntervalChartProps {
   sessionId: string;
@@ -11,6 +12,7 @@ interface IntervalChartProps {
 export const IntervalChart = ({ sessionId }: IntervalChartProps) => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [outliersFiltered, setOutliersFiltered] = useState(false);
 
   useEffect(() => {
     loadIntervalData();
@@ -47,6 +49,22 @@ export const IntervalChart = ({ sessionId }: IntervalChartProps) => {
           packetLoss: interval.packet_loss ? Number(interval.packet_loss) : 0,
         })) || [];
 
+        // Check if outliers were filtered (detect large spikes at start/end)
+        if (formattedData.length > 5) {
+          const middleData = formattedData.slice(2, -2);
+          const medianJitter = middleData.map(d => d.jitter).sort((a, b) => a - b)[Math.floor(middleData.length / 2)];
+          const medianLatency = middleData.map(d => d.latency).sort((a, b) => a - b)[Math.floor(middleData.length / 2)];
+          
+          const firstHasSpike = formattedData.slice(0, 2).some(d => 
+            d.jitter > medianJitter * 2 || d.latency > medianLatency * 2
+          );
+          const lastHasSpike = formattedData.slice(-2).some(d => 
+            d.jitter > medianJitter * 2 || d.latency > medianLatency * 2
+          );
+          
+          setOutliersFiltered(firstHasSpike || lastHasSpike);
+        }
+
         setData(formattedData);
       }
     } catch (error) {
@@ -75,6 +93,14 @@ export const IntervalChart = ({ sessionId }: IntervalChartProps) => {
 
   return (
     <div className="space-y-8">
+      {outliersFiltered && (
+        <div className="p-3 rounded-lg bg-info/10 border border-info/20 text-sm">
+          <p className="text-info font-medium">
+            ℹ️ Note: Abnormally high jitter/latency values detected at the beginning or end of the call were filtered from average calculations for improved accuracy.
+          </p>
+        </div>
+      )}
+      
       <div>
         <h4 className="text-sm font-semibold text-foreground mb-4">MOS Score Over Time</h4>
         <ResponsiveContainer width="100%" height={250}>
