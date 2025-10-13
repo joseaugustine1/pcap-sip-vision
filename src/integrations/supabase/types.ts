@@ -52,6 +52,9 @@ export type Database = {
       }
       call_metrics: {
         Row: {
+          audio_extracted_at: string | null
+          audio_extraction_error: string | null
+          audio_extraction_status: string | null
           avg_jitter: number | null
           avg_latency: number | null
           call_id: string
@@ -61,9 +64,11 @@ export type Database = {
           duration: number | null
           end_time: string | null
           id: string
+          inbound_audio_path: string | null
           max_jitter: number | null
           max_latency: number | null
           mos_score: number | null
+          outbound_audio_path: string | null
           packets_lost: number | null
           packets_received: number | null
           packets_sent: number | null
@@ -72,6 +77,9 @@ export type Database = {
           start_time: string | null
         }
         Insert: {
+          audio_extracted_at?: string | null
+          audio_extraction_error?: string | null
+          audio_extraction_status?: string | null
           avg_jitter?: number | null
           avg_latency?: number | null
           call_id: string
@@ -81,9 +89,11 @@ export type Database = {
           duration?: number | null
           end_time?: string | null
           id?: string
+          inbound_audio_path?: string | null
           max_jitter?: number | null
           max_latency?: number | null
           mos_score?: number | null
+          outbound_audio_path?: string | null
           packets_lost?: number | null
           packets_received?: number | null
           packets_sent?: number | null
@@ -92,6 +102,9 @@ export type Database = {
           start_time?: string | null
         }
         Update: {
+          audio_extracted_at?: string | null
+          audio_extraction_error?: string | null
+          audio_extraction_status?: string | null
           avg_jitter?: number | null
           avg_latency?: number | null
           call_id?: string
@@ -101,9 +114,11 @@ export type Database = {
           duration?: number | null
           end_time?: string | null
           id?: string
+          inbound_audio_path?: string | null
           max_jitter?: number | null
           max_latency?: number | null
           mos_score?: number | null
+          outbound_audio_path?: string | null
           packets_lost?: number | null
           packets_received?: number | null
           packets_sent?: number | null

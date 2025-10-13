@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import {
+  parsePcapFile,
+  calculateMetrics,
+  extractCodecFromSDP,
+  decodeG711Mulaw,
+  createWavFile,
+  type RTPPacket,
+  type SIPMessage
+} from "../_shared/pcap-parser.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -41,169 +50,301 @@ serve(async (req) => {
 
     console.log(`Found ${pcapFiles?.length || 0} PCAP files to analyze`);
 
-    // NOTE: In a real implementation, this would:
-    // 1. Download PCAP files from storage
-    // 2. Run tshark commands to extract VoIP metrics
-    // 3. Parse RTP streams, SIP messages, etc.
-    // 
-    // For demonstration, we'll generate realistic sample data
-    // This simulates what tshark would extract from actual PCAP files
+    // Storage for all parsed data
+    const allRtpPackets: Map<number, RTPPacket[]> = new Map();
+    const allSipMessages: SIPMessage[] = [];
 
-    const calls = [];
-    const sipMessages = [];
-    const numCalls = Math.floor(Math.random() * 5) + 3; // 3-8 calls per session
-
-    // Generate mock call data based on PCAP files
-    for (let i = 0; i < numCalls; i++) {
-      const callId = `call-${Date.now()}-${i}`;
-      const startTime = new Date(Date.now() - Math.random() * 3600000); // Last hour
-      const duration = 30 + Math.random() * 300; // 30-330 seconds
-      const endTime = new Date(startTime.getTime() + duration * 1000);
-
-      // Generate realistic VoIP metrics
-      const baseJitter = 5 + Math.random() * 15; // 5-20ms base jitter
-      const baseLatency = 30 + Math.random() * 100; // 30-130ms base latency
-      const packetsSent = Math.floor(duration * 50); // ~50 packets/sec
-      const packetLoss = Math.floor(Math.random() * (packetsSent * 0.05)); // 0-5% loss
-
-      // Calculate MOS using E-Model (ITU-T G.107)
-      // R-factor calculation based on network impairments
-      const packetLossPercent = (packetLoss / packetsSent) * 100;
+    // Download and parse each PCAP file
+    for (const pcapFile of pcapFiles) {
+      console.log(`Downloading PCAP: ${pcapFile.file_path}`);
       
-      // Delay impairment (Id)
-      const effectiveLatency = baseLatency + (baseJitter * 2); // Account for jitter buffer
-      const Id = effectiveLatency < 177.3 
-        ? 0.024 * effectiveLatency 
-        : 0.024 * effectiveLatency + 0.11 * (effectiveLatency - 177.3);
-      
-      // Equipment impairment (Ie) - codec-specific
-      const codecImpairment = 10; // G.711 typical value
-      
-      // Packet loss impairment (Ie-eff)
-      const Bpl = 17; // Packet loss robustness factor for G.711
-      const Ie_eff = codecImpairment + (95 - codecImpairment) * (packetLossPercent / (packetLossPercent + Bpl));
-      
-      // Calculate R-factor
-      const R0 = 94.2; // Base R-value
-      const Is = 1.5; // Simultaneous impairment
-      const R = Math.max(0, Math.min(100, R0 - Id - Ie_eff - Is));
-      
-      // Convert R-factor to MOS (ITU-T G.107)
-      let mosScore;
-      if (R < 0) {
-        mosScore = 1.0;
-      } else if (R < 100) {
-        mosScore = 1 + 0.035 * R + R * (R - 60) * (100 - R) * 7 * 0.000001;
-      } else {
-        mosScore = 4.5;
+      try {
+        const { data: pcapData, error: downloadError } = await supabase.storage
+          .from('pcap-files')
+          .download(pcapFile.file_path);
+        
+        if (downloadError) {
+          console.error(`Failed to download ${pcapFile.file_path}:`, downloadError);
+          continue;
+        }
+        
+        const pcapBytes = new Uint8Array(await pcapData.arrayBuffer());
+        console.log(`Parsing PCAP file (${pcapBytes.length} bytes)...`);
+        
+        const { rtpPackets, sipMessages } = await parsePcapFile(pcapBytes);
+        
+        console.log(`Extracted ${rtpPackets.length} RTP packets, ${sipMessages.length} SIP messages`);
+        
+        for (const packet of rtpPackets) {
+          if (!allRtpPackets.has(packet.ssrc)) {
+            allRtpPackets.set(packet.ssrc, []);
+          }
+          allRtpPackets.get(packet.ssrc)!.push(packet);
+        }
+        
+        allSipMessages.push(...sipMessages);
+        
+      } catch (parseError) {
+        console.error(`Error parsing ${pcapFile.file_path}:`, parseError);
       }
-      mosScore = Math.max(1.0, Math.min(5.0, mosScore));
+    }
 
-      const sourceIp = `10.0.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 255)}`;
-      const destIp = `10.0.${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 255)}`;
+    console.log(`Total: ${allRtpPackets.size} RTP streams, ${allSipMessages.length} SIP messages`);
 
-      const callMetric = {
-        session_id: sessionId,
-        call_id: callId,
-        start_time: startTime.toISOString(),
-        end_time: endTime.toISOString(),
-        duration: duration,
-        codec: ["G.711", "G.729", "Opus"][Math.floor(Math.random() * 3)],
-        packets_sent: packetsSent,
-        packets_received: packetsSent - packetLoss,
-        packets_lost: packetLoss,
-        avg_jitter: baseJitter,
-        max_jitter: baseJitter * 1.5,
-        avg_latency: baseLatency,
-        max_latency: baseLatency * 1.3,
-        mos_score: mosScore,
-        source_ip: sourceIp,
-        dest_ip: destIp,
-      };
+    // Group data by Call-ID
+    const callMap: Map<string, {
+      sipMessages: SIPMessage[];
+      rtpStreams: Map<number, RTPPacket[]>;
+    }> = new Map();
 
-      const { data: insertedCall, error: callError } = await supabase
-        .from("call_metrics")
-        .insert([callMetric])
-        .select()
-        .single();
-
-      if (callError) {
-        console.error("Error inserting call metric:", callError);
-        continue;
-      }
-
-      calls.push(insertedCall);
-
-      // Generate interval metrics (5-second intervals)
-      const intervals = [];
-      for (let t = 0; t < duration; t += 5) {
-        const intervalStart = new Date(startTime.getTime() + t * 1000);
-        const intervalEnd = new Date(intervalStart.getTime() + 5000);
-
-        // Add some variance to interval metrics
-        const variance = (Math.random() - 0.5) * 2;
-        intervals.push({
-          call_id: insertedCall.id,
-          interval_start: intervalStart.toISOString(),
-          interval_end: intervalEnd.toISOString(),
-          jitter: Math.max(0, baseJitter + variance * 5),
-          latency: Math.max(0, baseLatency + variance * 10),
-          packet_loss: Math.max(0, Math.min(10, (packetLoss / packetsSent) * 100 + variance)),
-          mos_score: Math.max(1.0, Math.min(5.0, mosScore + variance * 0.2)),
+    for (const sipMsg of allSipMessages) {
+      if (!callMap.has(sipMsg.callId)) {
+        callMap.set(sipMsg.callId, {
+          sipMessages: [],
+          rtpStreams: new Map()
         });
       }
+      callMap.get(sipMsg.callId)!.sipMessages.push(sipMsg);
+    }
 
-      if (intervals.length > 0) {
-        const { error: intervalsError } = await supabase
-          .from("interval_metrics")
-          .insert(intervals);
-
-        if (intervalsError) {
-          console.error("Error inserting interval metrics:", intervalsError);
+    // Match RTP streams to calls
+    for (const [ssrc, packets] of allRtpPackets) {
+      if (packets.length === 0) continue;
+      
+      const firstPacket = packets[0];
+      const packetTime = new Date(firstPacket.captureTime / 1000);
+      
+      let matchedCallId: string | null = null;
+      let minTimeDiff = Infinity;
+      
+      for (const [callId, callData] of callMap) {
+        const invite = callData.sipMessages.find(m => m.method === 'INVITE');
+        if (invite) {
+          const timeDiff = Math.abs(packetTime.getTime() - invite.timestamp.getTime());
+          
+          const ipMatch = 
+            (invite.sourceIp === firstPacket.sourceIp || invite.destIp === firstPacket.sourceIp) &&
+            (invite.sourceIp === firstPacket.destIp || invite.destIp === firstPacket.destIp);
+          
+          if (ipMatch && timeDiff < 10000 && timeDiff < minTimeDiff) {
+            matchedCallId = callId;
+            minTimeDiff = timeDiff;
+          }
         }
       }
-
-      // Generate SIP messages for this call
-      const sipSequence = [
-        { method: "INVITE", status: null, type: "request" },
-        { method: null, status: 100, type: "response" },
-        { method: null, status: 180, type: "response" },
-        { method: null, status: 200, type: "response" },
-        { method: "ACK", status: null, type: "request" },
-        { method: "BYE", status: null, type: "request" },
-        { method: null, status: 200, type: "response" },
-      ];
-
-      let messageTime = new Date(startTime);
-      for (const sipMsg of sipSequence) {
-        messageTime = new Date(messageTime.getTime() + Math.random() * 2000);
-
-        sipMessages.push({
-          session_id: sessionId,
-          call_id: callId,
-          timestamp: messageTime.toISOString(),
-          source_ip: sipMsg.type === "request" ? sourceIp : destIp,
-          source_port: sipMsg.type === "request" ? 5060 : 5061,
-          dest_ip: sipMsg.type === "request" ? destIp : sourceIp,
-          dest_port: sipMsg.type === "request" ? 5061 : 5060,
-          method: sipMsg.method,
-          status_code: sipMsg.status,
-          message_type: sipMsg.type,
-          content: `SIP/2.0 ${sipMsg.status || sipMsg.method}\nCall-ID: ${callId}\nCSeq: 1 ${sipMsg.method || ""}`,
+      
+      if (matchedCallId) {
+        callMap.get(matchedCallId)!.rtpStreams.set(ssrc, packets);
+      } else {
+        const syntheticCallId = `rtp-${ssrc}`;
+        callMap.set(syntheticCallId, {
+          sipMessages: [],
+          rtpStreams: new Map([[ssrc, packets]])
         });
+      }
+    }
+
+    console.log(`Organized into ${callMap.size} calls`);
+
+    const insertedCalls = [];
+    const intervalMetricsToInsert = [];
+
+    // Process each call
+    for (const [callId, callData] of callMap) {
+      if (callData.rtpStreams.size === 0) {
+        console.log(`Call ${callId}: No RTP data, skipping`);
+        continue;
+      }
+      
+      try {
+        const inviteWithSdp = callData.sipMessages.find(m => m.method === 'INVITE' && m.sdpBody);
+        const codec = inviteWithSdp ? extractCodecFromSDP(inviteWithSdp.sdpBody!) : 'Unknown';
+        
+        const primaryStreamEntry = Array.from(callData.rtpStreams.entries())
+          .sort((a, b) => b[1].length - a[1].length)[0];
+        const [primarySsrc, primaryStream] = primaryStreamEntry;
+        
+        console.log(`Call ${callId}: ${primaryStream.length} RTP packets, codec: ${codec}`);
+        
+        const metrics = calculateMetrics(primaryStream);
+        
+        let sourceIp = primaryStream[0].sourceIp;
+        let destIp = primaryStream[0].destIp;
+        if (callData.sipMessages.length > 0) {
+          sourceIp = callData.sipMessages[0].sourceIp;
+          destIp = callData.sipMessages[0].destIp;
+        }
+        
+        const { data: insertedCall, error: callError } = await supabase
+          .from('call_metrics')
+          .insert([{
+            session_id: sessionId,
+            call_id: callId,
+            start_time: metrics.startTime.toISOString(),
+            end_time: metrics.endTime.toISOString(),
+            duration: metrics.duration,
+            codec: codec,
+            packets_sent: metrics.packetsSent,
+            packets_received: metrics.packetsReceived,
+            packets_lost: metrics.packetsLost,
+            avg_jitter: metrics.avgJitter,
+            max_jitter: metrics.maxJitter,
+            avg_latency: metrics.avgLatency,
+            max_latency: metrics.maxLatency,
+            mos_score: metrics.mosScore,
+            source_ip: sourceIp,
+            dest_ip: destIp,
+            audio_extraction_status: 'pending'
+          }])
+          .select()
+          .single();
+        
+        if (callError) {
+          console.error(`Error inserting call metric for ${callId}:`, callError);
+          continue;
+        }
+        
+        insertedCalls.push(insertedCall);
+        console.log(`Call ${callId}: Metrics inserted, MOS: ${metrics.mosScore.toFixed(2)}`);
+        
+        // Generate interval metrics
+        const intervalDuration = 5000000;
+        const startTime = primaryStream[0].captureTime;
+        const endTime = primaryStream[primaryStream.length - 1].captureTime;
+        const numIntervals = Math.ceil((endTime - startTime) / intervalDuration);
+        
+        for (let i = 0; i < numIntervals; i++) {
+          const intervalStart = startTime + (i * intervalDuration);
+          const intervalEnd = intervalStart + intervalDuration;
+          
+          const intervalPackets = primaryStream.filter(
+            p => p.captureTime >= intervalStart && p.captureTime < intervalEnd
+          );
+          
+          if (intervalPackets.length > 0) {
+            const intervalMetrics = calculateMetrics(intervalPackets);
+            
+            intervalMetricsToInsert.push({
+              call_id: insertedCall.id,
+              interval_start: new Date(intervalStart / 1000).toISOString(),
+              interval_end: new Date(intervalEnd / 1000).toISOString(),
+              jitter: intervalMetrics.avgJitter,
+              latency: intervalMetrics.avgLatency,
+              packet_loss: intervalMetrics.packetsLost,
+              mos_score: intervalMetrics.mosScore
+            });
+          }
+        }
+        
+        // Audio extraction
+        if (codec.includes('G.711') || codec.includes('μ-law') || codec.includes('PCMU')) {
+          console.log(`Call ${callId}: Starting G.711 audio extraction...`);
+          
+          try {
+            const streams = Array.from(callData.rtpStreams.entries());
+            
+            for (let idx = 0; idx < Math.min(streams.length, 2); idx++) {
+              const [ssrc, packets] = streams[idx];
+              const direction = idx === 0 ? 'outbound' : 'inbound';
+              
+              const pcmData = decodeG711Mulaw(packets);
+              const wavData = createWavFile(pcmData, 8000);
+              
+              const audioPath = `${sessionId}/${insertedCall.id}_${direction}.wav`;
+              
+              const { error: uploadError } = await supabase.storage
+                .from('audio-files')
+                .upload(audioPath, wavData, {
+                  contentType: 'audio/wav',
+                  upsert: true
+                });
+              
+              if (uploadError) {
+                console.error(`Failed to upload ${direction} audio:`, uploadError);
+                continue;
+              }
+              
+              const updateField = direction === 'outbound' ? 'outbound_audio_path' : 'inbound_audio_path';
+              await supabase
+                .from('call_metrics')
+                .update({
+                  [updateField]: audioPath,
+                  audio_extraction_status: 'completed',
+                  audio_extracted_at: new Date().toISOString()
+                })
+                .eq('id', insertedCall.id);
+              
+              console.log(`Call ${callId}: ${direction} audio extracted (${pcmData.length} samples)`);
+            }
+            
+          } catch (audioError) {
+            console.error(`Audio extraction error for ${callId}:`, audioError);
+            await supabase
+              .from('call_metrics')
+              .update({
+                audio_extraction_status: 'failed',
+                audio_extraction_error: String(audioError)
+              })
+              .eq('id', insertedCall.id);
+          }
+          
+        } else {
+          console.log(`Call ${callId}: Codec ${codec} not supported for audio extraction`);
+          await supabase
+            .from('call_metrics')
+            .update({
+              audio_extraction_status: 'unsupported',
+              audio_extraction_error: `Codec ${codec} not yet supported (only G.711 μ-law currently)`
+            })
+            .eq('id', insertedCall.id);
+        }
+        
+      } catch (callError) {
+        console.error(`Error processing call ${callId}:`, callError);
+      }
+    }
+
+    // Insert interval metrics
+    if (intervalMetricsToInsert.length > 0) {
+      const { error: intervalError } = await supabase
+        .from('interval_metrics')
+        .insert(intervalMetricsToInsert);
+      
+      if (intervalError) {
+        console.error('Error inserting interval metrics:', intervalError);
+      } else {
+        console.log(`Inserted ${intervalMetricsToInsert.length} interval metrics`);
       }
     }
 
     // Insert SIP messages
-    if (sipMessages.length > 0) {
-      const { error: sipError } = await supabase
-        .from("sip_messages")
-        .insert(sipMessages);
+    const sipMessagesToInsert = allSipMessages.map(msg => ({
+      session_id: sessionId,
+      call_id: msg.callId,
+      timestamp: msg.timestamp.toISOString(),
+      source_ip: msg.sourceIp,
+      source_port: msg.sourcePort,
+      dest_ip: msg.destIp,
+      dest_port: msg.destPort,
+      method: msg.method,
+      status_code: msg.statusCode,
+      message_type: msg.method ? 'request' : 'response',
+      content: msg.content
+    }));
 
+    if (sipMessagesToInsert.length > 0) {
+      const { error: sipError } = await supabase
+        .from('sip_messages')
+        .insert(sipMessagesToInsert);
+      
       if (sipError) {
-        console.error("Error inserting SIP messages:", sipError);
+        console.error('Error inserting SIP messages:', sipError);
+      } else {
+        console.log(`Inserted ${sipMessagesToInsert.length} SIP messages`);
       }
     }
+
+    const calls = insertedCalls;
 
     // Calculate session averages
     const avgMos = calls.reduce((sum, c) => sum + c.mos_score, 0) / calls.length;
