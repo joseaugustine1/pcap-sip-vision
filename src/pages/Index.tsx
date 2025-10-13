@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { UploadSection } from "@/components/voip/UploadSection";
-import { SessionList } from "@/components/voip/SessionList";
 import { SessionDetails } from "@/components/voip/SessionDetails";
 import { UserProfile } from "@/components/voip/UserProfile";
+import { AppSidebar } from "@/components/voip/AppSidebar";
 import { Activity, Terminal, Loader2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Index = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -59,47 +60,44 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border glass-card sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/20 border border-primary/30">
-                <Terminal className="w-6 h-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  VoIP <span className="text-primary">Analyzer</span>
-                </h1>
-                <p className="text-xs text-muted-foreground">
-                  PCAP Analysis & Network Troubleshooting
-                </p>
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen w-full flex bg-background">
+        <AppSidebar 
+          selectedSessionId={selectedSessionId}
+          onSelectSession={setSelectedSessionId}
+          refreshTrigger={refreshTrigger}
+        />
+        
+        <div className="flex-1 flex flex-col w-full">
+          {/* Header */}
+          <header className="border-b border-border glass-card sticky top-0 z-10">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SidebarTrigger />
+                  <div className="p-2 rounded-xl bg-primary/20 border border-primary/30">
+                    <Terminal className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-foreground">
+                      VoIP <span className="text-primary">Analyzer</span>
+                    </h1>
+                    <p className="text-xs text-muted-foreground">
+                      PCAP Analysis & Network Troubleshooting
+                    </p>
+                  </div>
+                </div>
+                <UserProfile />
               </div>
             </div>
-            <UserProfile />
-          </div>
-        </div>
-      </header>
+          </header>
 
-      <main className="container mx-auto px-6 py-8">
-        <div className="grid gap-6">
-          {/* Upload Section */}
-          <UploadSection onUploadComplete={handleUploadComplete} />
+          <main className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Upload Section */}
+              <UploadSection onUploadComplete={handleUploadComplete} />
 
-          {/* Sessions Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Session List */}
-            <div className="lg:col-span-1">
-              <SessionList 
-                key={refreshTrigger}
-                selectedSessionId={selectedSessionId} 
-                onSelectSession={setSelectedSessionId} 
-              />
-            </div>
-
-            {/* Session Details */}
-            <div className="lg:col-span-2">
+              {/* Session Details */}
               {selectedSessionId ? (
                 <SessionDetails sessionId={selectedSessionId} />
               ) : (
@@ -108,14 +106,14 @@ const Index = () => {
                     <Activity className="w-8 h-8 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-2">No Session Selected</h3>
-                  <p className="text-muted-foreground">Upload PCAP files or select a session to view analysis</p>
+                  <p className="text-muted-foreground">Upload PCAP files or select a session from the sidebar to view analysis</p>
                 </div>
               )}
             </div>
-          </div>
+          </main>
         </div>
-      </main>
-    </div>
+      </div>
+    </SidebarProvider>
   );
 };
 
