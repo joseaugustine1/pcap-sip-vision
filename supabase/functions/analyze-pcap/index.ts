@@ -160,16 +160,21 @@ serve(async (req) => {
         const inviteWithSdp = callData.sipMessages.find(m => m.method === 'INVITE' && m.sdpBody);
         const codec = inviteWithSdp ? extractCodecFromSDP(inviteWithSdp.sdpBody!) : 'Unknown';
         
-        const primaryStreamEntry = Array.from(callData.rtpStreams.entries())
-          .sort((a, b) => b[1].length - a[1].length)[0];
-        const [primarySsrc, primaryStream] = primaryStreamEntry;
+        // Combine all RTP streams for this call
+        const allPackets: RTPPacket[] = [];
+        for (const [ssrc, packets] of callData.rtpStreams) {
+          allPackets.push(...packets);
+        }
         
-        console.log(`Call ${callId}: ${primaryStream.length} RTP packets, codec: ${codec}`);
+        // Sort by capture time
+        allPackets.sort((a, b) => a.captureTime - b.captureTime);
         
-        const metrics = calculateMetrics(primaryStream);
+        console.log(`Call ${callId}: ${allPackets.length} RTP packets across ${callData.rtpStreams.size} streams, codec: ${codec}`);
         
-        let sourceIp = primaryStream[0].sourceIp;
-        let destIp = primaryStream[0].destIp;
+        const metrics = calculateMetrics(allPackets);
+        
+        let sourceIp = allPackets[0].sourceIp;
+        let destIp = allPackets[0].destIp;
         if (callData.sipMessages.length > 0) {
           sourceIp = callData.sipMessages[0].sourceIp;
           destIp = callData.sipMessages[0].destIp;
@@ -207,14 +212,10 @@ serve(async (req) => {
         insertedCalls.push(insertedCall);
         console.log(`Call ${callId}: Metrics inserted, MOS: ${metrics.mosScore.toFixed(2)}`);
         
-        // Generate interval metrics using filtered stream
-        // First calculate full stream metrics to identify outlier segments
-        const fullMetrics = calculateMetrics(primaryStream);
-        
-        // Now calculate per-interval metrics
+        // Generate interval metrics using combined stream
         const intervalDuration = 5000000;
-        const startTime = primaryStream[0].captureTime;
-        const endTime = primaryStream[primaryStream.length - 1].captureTime;
+        const startTime = allPackets[0].captureTime;
+        const endTime = allPackets[allPackets.length - 1].captureTime;
         const callDuration = endTime - startTime;
         const numIntervals = Math.ceil(callDuration / intervalDuration);
         
@@ -232,7 +233,7 @@ serve(async (req) => {
           const intervalStart = startTime + (i * intervalDuration);
           const intervalEnd = intervalStart + intervalDuration;
           
-          const intervalPackets = primaryStream.filter(
+          const intervalPackets = allPackets.filter(
             p => p.captureTime >= intervalStart && p.captureTime < intervalEnd
           );
           
@@ -255,12 +256,14 @@ serve(async (req) => {
           }
         }
         
-        // Audio extraction
+        // Audio extraction - split streams by direction for bidirectional audio
         if (codec.includes('G.711') || codec.includes('μ-law') || codec.includes('PCMU')) {
           console.log(`Call ${callId}: Starting G.711 audio extraction...`);
           
           try {
-            const streams = Array.from(callData.rtpStreams.entries());
+            // Sort streams by size (largest first)
+            const streams = Array.from(callData.rtpStreams.entries())
+              .sort((a, b) => b[1].length - a[1].length);
             
             for (let idx = 0; idx < Math.min(streams.length, 2); idx++) {
               const [ssrc, packets] = streams[idx];

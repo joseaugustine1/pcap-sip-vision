@@ -44,8 +44,8 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
 
       if (error) throw error;
 
-      // Parse CDR info from INVITE messages
-      const cdrs: CdrInfo[] = [];
+      // Parse CDR info from INVITE messages, deduplicate by Call-ID
+      const cdrMap = new Map<string, CdrInfo>();
       
       for (const msg of messages || []) {
         if (!msg.content) continue;
@@ -55,15 +55,20 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
         const callIdMatch = msg.content.match(/Call-ID:\s*([^\r\n]+)/i);
 
         if (callIdMatch) {
+          const callId = callIdMatch[1].trim();
+          
+          // Skip if we already have this Call-ID
+          if (cdrMap.has(callId)) continue;
+          
           // Get call metrics for duration
           const { data: callMetrics } = await supabase
             .from("call_metrics")
             .select("start_time, end_time, duration")
-            .eq("call_id", callIdMatch[1].trim())
+            .eq("call_id", callId)
             .single();
 
-          cdrs.push({
-            callId: callIdMatch[1].trim(),
+          cdrMap.set(callId, {
+            callId,
             fromUser: fromMatch ? (fromMatch[1] || fromMatch[2]) : "Unknown",
             fromUri: fromMatch ? `${fromMatch[2]}@${fromMatch[3]}` : "Unknown",
             toUser: toMatch ? (toMatch[1] || toMatch[2]) : "Unknown",
@@ -75,7 +80,7 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
         }
       }
 
-      setCdrData(cdrs);
+      setCdrData(Array.from(cdrMap.values()));
     } catch (error) {
       console.error("Error loading CDR data:", error);
     } finally {
