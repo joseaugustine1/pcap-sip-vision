@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, FileCheck, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { mapError, logError } from '@/lib/errorHandler';
 
@@ -37,54 +37,11 @@ export const UploadSection = ({ onUploadComplete }: UploadSectionProps) => {
     setUploading(true);
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
       // Create analysis session
-      const { data: session, error: sessionError } = await supabase
-        .from("analysis_sessions")
-        .insert([{ name: sessionName, status: "processing", user_id: user.id }])
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
-
+      const session = await apiClient.createSession(sessionName);
+      
       // Upload files
-      for (const file of files) {
-        const filePath = `${session.id}/${file.name}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from("pcap-files")
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
-        // Store file reference
-        await supabase.from("pcap_files").insert([{
-          session_id: session.id,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-        }]);
-      }
-
-      // Trigger analysis - invoke returns data/error, not just error
-      const { data: analysisData, error: functionError } = await supabase.functions.invoke("analyze-pcap", {
-        body: { sessionId: session.id },
-      });
-
-      if (functionError) {
-        console.error("Edge function error details:", {
-          message: functionError.message,
-          status: functionError.status,
-          statusText: functionError.statusText,
-          error: functionError
-        });
-        throw new Error(`Analysis failed: ${functionError.message || 'Unknown error'}`);
-      }
-
-      console.log("Analysis triggered successfully:", analysisData);
+      await apiClient.uploadPcap(session.id, files);
 
       toast({
         title: "Upload Successful",
@@ -103,8 +60,7 @@ export const UploadSection = ({ onUploadComplete }: UploadSectionProps) => {
       }
 
     } catch (error: any) {
-      const { data: { user } } = await supabase.auth.getUser();
-      logError('pcap-upload', error, user?.id);
+      logError('pcap-upload', error);
       
       const { message } = mapError(error);
       toast({

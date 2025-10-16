@@ -32,7 +32,7 @@ const Index = () => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
+  if (!user) {
         navigate("/auth");
       } else {
         setUser(session.user);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Globe } from "lucide-react";
 
@@ -27,11 +27,7 @@ export const IpLookupBadge = ({ ip }: IpLookupBadgeProps) => {
     try {
       setLoading(true);
       
-      const { data, error } = await supabase.functions.invoke("ip-lookup", {
-        body: { ip },
-      });
-
-      if (error) throw error;
+      const data = await apiClient.lookupIp(ip);
       setIpInfo(data);
     } catch (error) {
       console.error("IP lookup error:", error);

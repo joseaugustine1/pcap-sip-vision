@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, CheckCircle, AlertCircle, Loader2, Trash2, Download, Activity } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { mapError, logError } from '@/lib/errorHandler';
@@ -58,32 +58,16 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
 
   useEffect(() => {
     loadSessions();
-
-    // Subscribe to changes
-    const channel = supabase
-      .channel("sessions-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "analysis_sessions" },
-        () => {
-          loadSessions();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    
+    // Poll for changes every 5 seconds
+    const interval = setInterval(loadSessions, 5000);
+    
+    return () => clearInterval(interval);
   }, [refreshTrigger]);
 
   const loadSessions = async () => {
     try {
-      const { data, error } = await supabase
-        .from("analysis_sessions")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.getSessions();
       setSessions(data || []);
     } catch (error) {
       console.error("Error loading sessions:", error);
@@ -127,72 +111,22 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
 
   const handleDownload = async (sessionId: string, sessionName: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    try {
-      const { data: pcapFiles, error: filesError } = await supabase
-        .from('pcap_files')
-        .select('*')
-        .eq('session_id', sessionId);
-
-      if (filesError) throw filesError;
-
-      if (!pcapFiles || pcapFiles.length === 0) {
-        toast({
-          title: "No files found",
-          description: "This session has no PCAP files to download.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      for (const file of pcapFiles) {
-        const { data, error } = await supabase.storage
-          .from('pcap-files')
-          .download(file.file_path);
-
-        if (error) throw error;
-
-        const url = URL.createObjectURL(data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.file_name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-
-      toast({
-        title: "Download started",
-        description: `Downloading ${pcapFiles.length} PCAP file(s)`,
-      });
-    } catch (error: any) {
-      const { data: { user } } = await supabase.auth.getUser();
-      logError('download-pcap', error, user?.id);
-      
-      const { message } = mapError(error);
-      toast({
-        title: "Download Failed",
-        description: message,
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Download unavailable",
+      description: "File download not yet implemented",
+      variant: "destructive",
+    });
   };
 
   const handleDelete = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('Are you sure you want to delete this session? This will also delete all associated PCAP files and analysis data.')) {
+    if (!confirm('Are you sure you want to delete this session?')) {
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('analysis_sessions')
-        .delete()
-        .eq('id', sessionId);
-
-      if (error) throw error;
+      await apiClient.deleteSession(sessionId);
 
       toast({
         title: "Session deleted",
@@ -204,8 +138,7 @@ export function AppSidebar({ selectedSessionId, onSelectSession, refreshTrigger 
         onSelectSession('');
       }
     } catch (error: any) {
-      const { data: { user } } = await supabase.auth.getUser();
-      logError('delete-session', error, user?.id);
+      logError('delete-session', error);
       
       const { message } = mapError(error);
       toast({

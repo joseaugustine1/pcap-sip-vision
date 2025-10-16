@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,13 +55,13 @@ const Auth = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    auth.getUser().then(({ data }) => {
+      if (data.user) {
         navigate("/");
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/");
       }
@@ -81,13 +81,12 @@ const Auth = () => {
         displayName: displayName.trim() || email.split('@')[0]
       });
 
-      const { error } = await supabase.auth.signUp({
+      const { error } = await auth.signUp({
         email: validated.email,
         password: validated.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            display_name: validated.displayName,
+            displayName: validated.displayName,
           },
         },
       });
@@ -130,7 +129,7 @@ const Auth = () => {
         password
       });
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await auth.signInWithPassword({
         email: validated.email,
         password: validated.password,
       });
