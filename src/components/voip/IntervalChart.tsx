@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -21,25 +21,19 @@ export const IntervalChart = ({ sessionId }: IntervalChartProps) => {
       setLoading(true);
 
       // Get all calls for this session
-      const { data: calls, error: callsError } = await supabase
-        .from("call_metrics")
-        .select("id")
-        .eq("session_id", sessionId);
-
-      if (callsError) throw callsError;
+      const calls = await apiClient.getCallMetrics(sessionId);
 
       if (calls && calls.length > 0) {
-        const callIds = calls.map((c) => c.id);
+        const callIds = calls.map((c: any) => c.id);
 
-        const { data: intervals, error: intervalsError } = await supabase
-          .from("interval_metrics")
-          .select("*")
-          .in("call_id", callIds)
-          .order("interval_start", { ascending: true });
+        // Get interval metrics for each call
+        const allIntervals = [];
+        for (const callId of callIds) {
+          const intervals = await apiClient.getIntervalMetrics(callId);
+          allIntervals.push(...intervals);
+        }
 
-        if (intervalsError) throw intervalsError;
-
-        const formattedData = intervals?.map((interval) => ({
+        const formattedData = allIntervals.map((interval: any) => ({
           time: format(new Date(interval.interval_start), "HH:mm:ss"),
           jitter: interval.jitter ? Number(interval.jitter) : 0,
           latency: interval.latency ? Number(interval.latency) : 0,
@@ -48,6 +42,8 @@ export const IntervalChart = ({ sessionId }: IntervalChartProps) => {
         })) || [];
 
         setData(formattedData);
+      } else {
+        setData([]);
       }
     } catch (error) {
       console.error("Error loading interval data:", error);

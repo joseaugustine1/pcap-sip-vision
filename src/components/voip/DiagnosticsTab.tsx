@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -41,17 +41,10 @@ export const DiagnosticsTab = ({ sessionId }: DiagnosticsTabProps) => {
   const loadDiagnosticData = async () => {
     try {
       // Load SIP messages
-      const { data: sipData } = await supabase
-        .from("sip_messages")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("timestamp", { ascending: true });
+      const sipData = await apiClient.getSipMessages(sessionId);
 
       // Load call metrics
-      const { data: callsData } = await supabase
-        .from("call_metrics")
-        .select("*")
-        .eq("session_id", sessionId);
+      const callsData = await apiClient.getCallMetrics(sessionId);
 
       setSipMessages(sipData || []);
       setCalls(callsData || []);

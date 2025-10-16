@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, Volume2, AlertCircle, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -20,13 +20,7 @@ export const AudioPlayback = ({ sessionId }: AudioPlaybackProps) => {
 
   const loadCalls = async () => {
     try {
-      const { data, error } = await supabase
-        .from("call_metrics")
-        .select("*, outbound_audio_path, inbound_audio_path, audio_extraction_status, audio_extraction_error")
-        .eq("session_id", sessionId)
-        .order("start_time", { ascending: false });
-
-      if (error) throw error;
+      const data = await apiClient.getCallMetrics(sessionId);
       setCalls(data || []);
     } catch (error) {
       console.error("Error loading calls:", error);
@@ -146,30 +140,12 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer = ({ audioPath, callId, direction, label }: AudioPlayerProps) => {
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    const getSignedUrl = async () => {
-      try {
-        setLoading(true);
-        const { data, error: urlError } = await supabase.storage
-          .from('audio-files')
-          .createSignedUrl(audioPath, 3600);
-        
-        if (urlError) throw urlError;
-        if (data) setAudioUrl(data.signedUrl);
-      } catch (err: any) {
-        console.error('Failed to get audio URL:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    getSignedUrl();
-  }, [audioPath]);
+    setLoading(false);
+  }, []);
   
   if (loading) {
     return (
@@ -182,39 +158,13 @@ const AudioPlayer = ({ audioPath, callId, direction, label }: AudioPlayerProps) 
     );
   }
   
-  if (error || !audioUrl) {
-    return (
-      <div className="space-y-3 p-4 rounded-lg bg-background/50 border border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">{label}</span>
-          <span className="text-xs text-destructive">Load Failed</span>
-        </div>
-        {error && <p className="text-xs text-muted-foreground">{error}</p>}
-      </div>
-    );
-  }
-  
   return (
     <div className="space-y-3 p-4 rounded-lg bg-background/50 border border-border">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{label}</span>
-        <span className="text-xs text-green-600 dark:text-green-400">Available</span>
+        <span className="text-xs text-muted-foreground">Not Available</span>
       </div>
-      
-      <audio controls className="w-full h-10">
-        <source src={audioUrl} type="audio/wav" />
-        Your browser does not support audio playback.
-      </audio>
-      
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => window.open(audioUrl, '_blank')}
-        className="w-full"
-      >
-        <Download className="h-4 w-4 mr-2" />
-        Download {direction} audio (WAV)
-      </Button>
+      <p className="text-xs text-muted-foreground">Audio playback coming soon</p>
     </div>
   );
 };

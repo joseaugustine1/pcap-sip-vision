@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/lib/api";
 import { UploadSection } from "@/components/voip/UploadSection";
 import { SessionDetails } from "@/components/voip/SessionDetails";
 import { UserProfile } from "@/components/voip/UserProfile";
 import { AppSidebar } from "@/components/voip/AppSidebar";
 import { Activity, Terminal, Loader2 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Index = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const navigate = useNavigate();
@@ -22,17 +21,17 @@ const Index = () => {
 
   useEffect(() => {
     // Check authentication
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
+    auth.getUser().then(({ data }) => {
+      if (!data.user) {
         navigate("/auth");
       } else {
-        setUser(session.user);
+        setUser(data.user);
       }
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-  if (!user) {
+    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      if (!session) {
         navigate("/auth");
       } else {
         setUser(session.user);

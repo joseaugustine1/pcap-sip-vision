@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { MetricsOverview } from "./MetricsOverview";
 import { CallMetricsTable } from "./CallMetricsTable";
 import { SipLadder } from "./SipLadder";
@@ -23,47 +23,21 @@ export const SessionDetails = ({ sessionId }: SessionDetailsProps) => {
 
   useEffect(() => {
     loadSessionData();
-
-    // Subscribe to changes
-    const channel = supabase
-      .channel(`session-${sessionId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "analysis_sessions", filter: `id=eq.${sessionId}` },
-        () => loadSessionData()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "call_metrics", filter: `session_id=eq.${sessionId}` },
-        () => loadSessionData()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    
+    // Poll for updates every 3 seconds
+    const interval = setInterval(loadSessionData, 3000);
+    
+    return () => clearInterval(interval);
   }, [sessionId]);
 
   const loadSessionData = async () => {
     try {
       setLoading(true);
 
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("analysis_sessions")
-        .select("*")
-        .eq("id", sessionId)
-        .single();
-
-      if (sessionError) throw sessionError;
+      const sessionData = await apiClient.getSession(sessionId);
       setSession(sessionData);
 
-      const { data: callsData, error: callsError } = await supabase
-        .from("call_metrics")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("start_time", { ascending: false });
-
-      if (callsError) throw callsError;
+      const callsData = await apiClient.getCallMetrics(sessionId);
       setCalls(callsData || []);
     } catch (error) {
       console.error("Error loading session data:", error);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Phone, User, Clock, Radio, ChevronDown, ChevronUp, Globe } from "lucide-react";
 import { IpLookupBadge } from "./IpLookupBadge";
 import { format } from "date-fns";
@@ -36,20 +36,13 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
       setLoading(true);
 
       // Get all SIP messages for this session
-      const { data: messages, error } = await supabase
-        .from("sip_messages")
-        .select("*")
-        .eq("session_id", sessionId)
-        .eq("method", "INVITE")
-        .order("timestamp", { ascending: true });
-
-      if (error) throw error;
+      const messages = await apiClient.getSipMessages(sessionId);
 
       // Parse CDR info from INVITE messages, deduplicate by Call-ID
       const cdrMap = new Map<string, CdrInfo>();
       
       for (const msg of messages || []) {
-        if (!msg.content) continue;
+        if (!msg.content || msg.method !== 'INVITE') continue;
 
         const fromMatch = msg.content.match(/From:\s*(?:"([^"]*)")?\s*<sip:([^@>]+)@?([^>]*)>/i);
         const toMatch = msg.content.match(/To:\s*(?:"([^"]*)")?\s*<sip:([^@>]+)@?([^>]*)>/i);
@@ -61,12 +54,10 @@ export const CdrDetails = ({ sessionId }: CdrDetailsProps) => {
           // Skip if we already have this Call-ID
           if (cdrMap.has(callId)) continue;
           
-          // Get call metrics for duration
-          const { data: callMetrics } = await supabase
-            .from("call_metrics")
-            .select("start_time, end_time, duration")
-            .eq("call_id", callId)
-            .single();
+          // Get call metrics for duration (if available)
+          const callMetrics = await apiClient.getCallMetrics(sessionId)
+            .then(metrics => metrics.find((m: any) => m.call_id === callId))
+            .catch(() => null);
 
           cdrMap.set(callId, {
             callId,

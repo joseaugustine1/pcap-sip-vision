@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { apiClient } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -56,21 +56,10 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
       setLoading(true);
 
       // Get SIP messages
-      const { data: sipData, error: sipError } = await supabase
-        .from("sip_messages")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("timestamp", { ascending: true });
-
-      if (sipError) throw sipError;
+      const sipData = await apiClient.getSipMessages(sessionId);
 
       // Get RTP call data
-      const { data: callData, error: callError } = await supabase
-        .from("call_metrics")
-        .select("*")
-        .eq("session_id", sessionId);
-
-      if (callError) throw callError;
+      const callData = await apiClient.getCallMetrics(sessionId);
 
       const allEvents: LadderEvent[] = [];
       const ips = new Set<string>();
@@ -80,7 +69,7 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
       let dstAgent = "";
 
       // Add SIP messages as events
-      sipData?.forEach((msg) => {
+      sipData?.forEach((msg: any) => {
         ips.add(msg.source_ip);
         ips.add(msg.dest_ip);
 
@@ -113,7 +102,7 @@ export const SipLadder = ({ sessionId }: SipLadderProps) => {
       setDestUserAgent(dstAgent);
 
       // Add RTP start/end events
-      callData?.forEach((call) => {
+      callData?.forEach((call: any) => {
         ips.add(call.source_ip);
         ips.add(call.dest_ip);
 
