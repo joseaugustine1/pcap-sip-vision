@@ -20,21 +20,18 @@ const Index = () => {
   };
 
   useEffect(() => {
-    // Check authentication
-    auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        navigate("/auth");
-      } else {
-        setUser(data.user);
-      }
-      setLoading(false);
-    });
-
+    // Set up auth state listener first
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
+      console.log('[Index] Auth state changed:', event, session ? 'has session' : 'no session');
       if (!session) {
+        console.log('[Index] No session, redirecting to auth');
+        setUser(null);
+        setLoading(false);
         navigate("/auth");
       } else {
+        console.log('[Index] Session found, user:', session.user);
         setUser(session.user);
+        setLoading(false);
       }
     });
 

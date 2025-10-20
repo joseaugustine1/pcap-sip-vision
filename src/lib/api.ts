@@ -84,9 +84,12 @@ class ApiClient {
 
   async getUser() {
     try {
+      console.log('[API] getUser called, token exists:', !!this.token);
       const data = await this.request('/auth/user');
+      console.log('[API] getUser success:', data.user);
       return { data: { user: data.user }, error: null };
-    } catch (error) {
+    } catch (error: any) {
+      console.log('[API] getUser failed:', error.message);
       return { data: { user: null }, error };
     }
   }
