@@ -4,19 +4,19 @@
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 class ApiClient {
-  private token: string | null = null;
   private authCallbacks: Array<(event: string, session: any) => void> = [];
 
-  constructor() {
-    this.token = localStorage.getItem('auth_token');
+  private getToken(): string | null {
+    return localStorage.getItem('auth_token');
   }
 
   private getHeaders(): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    const token = this.getToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
     return headers;
   }
@@ -47,7 +47,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password, displayName }),
     });
-    this.token = data.token;
     localStorage.setItem('auth_token', data.token);
     
     // Trigger auth state change callbacks
@@ -62,7 +61,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    this.token = data.token;
     localStorage.setItem('auth_token', data.token);
     
     // Trigger auth state change callbacks
@@ -73,7 +71,6 @@ class ApiClient {
   }
 
   async signOut() {
-    this.token = null;
     localStorage.removeItem('auth_token');
     
     // Trigger auth state change callbacks
@@ -84,7 +81,7 @@ class ApiClient {
 
   async getUser() {
     try {
-      console.log('[API] getUser called, token exists:', !!this.token);
+      console.log('[API] getUser called, token exists:', !!this.getToken());
       const data = await this.request('/auth/user');
       console.log('[API] getUser success:', data.user);
       return { data: { user: data.user }, error: null };
@@ -142,7 +139,7 @@ class ApiClient {
 
     const response = await fetch(`${API_URL}/pcap/upload`, {
       method: 'POST',
-      headers: this.token ? { Authorization: `Bearer ${this.token}` } : undefined,
+      headers: this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : undefined,
       body: formData,
     });
 
@@ -169,7 +166,7 @@ class ApiClient {
     // Immediately check current auth state
     this.getUser().then(({ data }) => {
       if (data.user) {
-        callback('SIGNED_IN', { user: data.user, access_token: this.token });
+        callback('SIGNED_IN', { user: data.user, access_token: this.getToken() });
       } else {
         callback('SIGNED_OUT', null);
       }
