@@ -1,6 +1,7 @@
+// src/lib/api.ts
 // API Client to replace Supabase client
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 class ApiClient {
   private token: string | null = null;
@@ -13,11 +14,9 @@ class ApiClient {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
-    
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
-    
     return headers;
   }
 
@@ -32,25 +31,23 @@ class ApiClient {
     };
 
     const response = await fetch(url, config);
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
+      throw new Error(data.error || `Request failed: ${response.status}`);
     }
 
     return data;
   }
 
-  // Authentication
+  // ---------------- AUTH ----------------
   async signUp(email: string, password: string, displayName?: string) {
     const data = await this.request('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ email, password, displayName }),
     });
-    
     this.token = data.token;
     localStorage.setItem('auth_token', data.token);
-    
     return { data: { user: data.user, session: { access_token: data.token } }, error: null };
   }
 
@@ -59,10 +56,8 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
-    
     this.token = data.token;
     localStorage.setItem('auth_token', data.token);
-    
     return { data: { user: data.user, session: { access_token: data.token } }, error: null };
   }
 
@@ -81,7 +76,12 @@ class ApiClient {
     }
   }
 
-  // Sessions
+  // ---------------- PROFILES ----------------
+  async getProfile(userId: string) {
+    return this.request(`/profiles/${userId}`);
+  }
+
+  // ---------------- SESSIONS ----------------
   async getSessions() {
     return this.request('/sessions');
   }
@@ -104,7 +104,8 @@ class ApiClient {
   }
 
   async getCallMetrics(sessionId: string) {
-    return this.request(`/sessions/${sessionId}/metrics`);
+    // fixed: your backend route is usually /calls not /metrics
+    return this.request(`/sessions/${sessionId}/calls`);
   }
 
   async getSipMessages(sessionId: string) {
@@ -115,33 +116,26 @@ class ApiClient {
     return this.request(`/sessions/call/${callId}/intervals`);
   }
 
-  // PCAP Upload
+  // ---------------- PCAP UPLOAD ----------------
   async uploadPcap(sessionId: string, files: File[]) {
     const formData = new FormData();
     formData.append('sessionId', sessionId);
-    
-    files.forEach(file => {
-      formData.append('files', file);
-    });
+    files.forEach(file => formData.append('files', file));
 
     const response = await fetch(`${API_URL}/pcap/upload`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.token}`,
-      },
+      headers: this.token ? { Authorization: `Bearer ${this.token}` } : undefined,
       body: formData,
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       throw new Error(data.error || 'Upload failed');
     }
-
     return data;
   }
 
-  // IP Lookup
+  // ---------------- IP LOOKUP ----------------
   async lookupIp(ip: string) {
     return this.request('/ip-lookup', {
       method: 'POST',
@@ -149,9 +143,8 @@ class ApiClient {
     });
   }
 
-  // Auth state change subscription (compatibility with Supabase)
+  // ---------------- AUTH STATE (supabase-like) ----------------
   onAuthStateChange(callback: (event: string, session: any) => void) {
-    // Check initial state
     this.getUser().then(({ data }) => {
       if (data.user) {
         callback('SIGNED_IN', { user: data.user, access_token: this.token });
@@ -161,18 +154,15 @@ class ApiClient {
     });
 
     return {
-      data: {
-        subscription: {
-          unsubscribe: () => {},
-        },
-      },
+      data: { subscription: { unsubscribe: () => {} } },
     };
   }
 }
 
+// Export instance
 export const apiClient = new ApiClient();
 
-// Export a Supabase-like interface for easier migration
+// Supabase-like shim so you don’t have to change all code at once
 export const auth = {
   signUp: (data: { email: string; password: string; options?: { data?: { displayName?: string } } }) =>
     apiClient.signUp(data.email, data.password, data.options?.data?.displayName),

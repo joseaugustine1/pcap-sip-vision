@@ -7,6 +7,10 @@ import authRoutes from './routes/auth.js';
 import sessionsRoutes from './routes/sessions.js';
 import pcapRoutes from './routes/pcap.js';
 import ipLookupRoutes from './routes/ipLookup.js';
+import profileRoutes from './routes/profiles.js';
+
+
+
 
 dotenv.config();
 
@@ -47,6 +51,8 @@ app.use((err, req, res, next) => {
     error: err.message || 'Internal server error'
   });
 });
+app.use('/api/profiles', profileRoutes);
+
 
 app.listen(PORT, () => {
   console.log(`🚀 VoIP Analyzer Server running on port ${PORT}`);
