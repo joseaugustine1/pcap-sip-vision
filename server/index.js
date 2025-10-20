@@ -33,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/pcap', pcapRoutes);
 app.use('/api/ip-lookup', ipLookupRoutes);
+app.use('/api/profiles', profileRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -51,7 +52,6 @@ app.use((err, req, res, next) => {
     error: err.message || 'Internal server error'
   });
 });
-app.use('/api/profiles', profileRoutes);
 
 
 app.listen(PORT, () => {
