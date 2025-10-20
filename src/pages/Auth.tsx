@@ -93,6 +93,8 @@ const Auth = () => {
 
       if (error) throw error;
 
+      navigate("/");
+      
       toast({
         title: "Account Created",
         description: "Welcome to VoIP Analyzer! Redirecting...",
@@ -136,6 +138,8 @@ const Auth = () => {
 
       if (error) throw error;
 
+      navigate("/");
+      
       toast({
         title: "Login Successful",
         description: "Welcome back!",

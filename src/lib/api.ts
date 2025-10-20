@@ -5,6 +5,7 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
 class ApiClient {
   private token: string | null = null;
+  private authCallbacks: Array<(event: string, session: any) => void> = [];
 
   constructor() {
     this.token = localStorage.getItem('auth_token');
@@ -48,7 +49,12 @@ class ApiClient {
     });
     this.token = data.token;
     localStorage.setItem('auth_token', data.token);
-    return { data: { user: data.user, session: { access_token: data.token } }, error: null };
+    
+    // Trigger auth state change callbacks
+    const session = { user: data.user, access_token: data.token };
+    this.authCallbacks.forEach(callback => callback('SIGNED_IN', session));
+    
+    return { data: { user: data.user, session }, error: null };
   }
 
   async signIn(email: string, password: string) {
@@ -58,12 +64,21 @@ class ApiClient {
     });
     this.token = data.token;
     localStorage.setItem('auth_token', data.token);
-    return { data: { user: data.user, session: { access_token: data.token } }, error: null };
+    
+    // Trigger auth state change callbacks
+    const session = { user: data.user, access_token: data.token };
+    this.authCallbacks.forEach(callback => callback('SIGNED_IN', session));
+    
+    return { data: { user: data.user, session }, error: null };
   }
 
   async signOut() {
     this.token = null;
     localStorage.removeItem('auth_token');
+    
+    // Trigger auth state change callbacks
+    this.authCallbacks.forEach(callback => callback('SIGNED_OUT', null));
+    
     return { error: null };
   }
 
@@ -145,6 +160,10 @@ class ApiClient {
 
   // ---------------- AUTH STATE (supabase-like) ----------------
   onAuthStateChange(callback: (event: string, session: any) => void) {
+    // Store the callback for future auth state changes
+    this.authCallbacks.push(callback);
+    
+    // Immediately check current auth state
     this.getUser().then(({ data }) => {
       if (data.user) {
         callback('SIGNED_IN', { user: data.user, access_token: this.token });
@@ -154,7 +173,17 @@ class ApiClient {
     });
 
     return {
-      data: { subscription: { unsubscribe: () => {} } },
+      data: { 
+        subscription: { 
+          unsubscribe: () => {
+            // Remove callback when unsubscribing
+            const index = this.authCallbacks.indexOf(callback);
+            if (index > -1) {
+              this.authCallbacks.splice(index, 1);
+            }
+          } 
+        } 
+      },
     };
   }
 }
